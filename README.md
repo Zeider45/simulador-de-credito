@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Simulador de Credito Venezolano
 
-## Getting Started
+Simulador en Next.js con backend para calcular cuotas UVC/IDI, mora diaria, pagos y asientos contables.
 
-First, run the development server:
+## Requisitos
+
+- Node.js 18+
+- Serie IDI en formato CSV (YYYY-MM-DD,IDI)
+
+## Uso local
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre el navegador en el puerto 3000 para usar el simulador.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Ejemplo de prepago
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Incluye un ejemplo en [examples/prepay_input.json](examples/prepay_input.json) y un script para comparar el calendario antes/despues:
 
-## Learn More
+```bash
+node scripts/example_prepay.js
+```
 
-To learn more about Next.js, take a look at the following resources:
+El script imprime un resumen con la longitud del calendario y una muestra de cuotas.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Caracteristicas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Sistema frances con cuota fija en UVC.
+- Indexacion por IDI (diaria o al vencimiento).
+- Mora diaria con base configurable.
+- Pagos editables por cuota.
+- Generacion de asientos contables con plan de cuentas configurable.
 
-## Deploy on Vercel
+## API
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+La ruta POST `/api/simulate` recibe los parametros del formulario y devuelve:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `summary`: resumen de neto, interes, mora y TIR.
+- `schedule`: tabla de cuotas con valores y tooltips.
+- `ledger`: asientos contables.
+
+La UI ya consume esta ruta automaticamente.

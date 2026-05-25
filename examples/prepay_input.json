@@ -1,0 +1,31 @@
+{
+  "principal": 120000,
+  "annualRate": 18,
+  "termMonths": 12,
+  "disbursementDate": "2026-01-10",
+  "firstDueDate": "2026-02-10",
+  "idi": 1.12,
+  "disbursementFeeRate": 0.8,
+  "dayCount": "30/360",
+  "interestValuation": "idi_daily",
+  "idiMissing": "linear",
+  "idiFutureStep": 0.01,
+  "moraRate": 0.8,
+  "graceDays": 0,
+  "moraBase": "amort",
+  "mora1": 30,
+  "mora2": 60,
+  "mora3": 90,
+  "creditUvc": true,
+  "applyPrepay": true,
+  "recomputeAfterPrepay": false,
+  "prepayAction": "reduce_term",
+  "payments": [
+    {},
+    {},
+    {
+      "paymentDate": "2026-04-10",
+      "paymentAmount": 60000
+    }
+  ]
+}
