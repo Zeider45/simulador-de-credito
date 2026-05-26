@@ -21,6 +21,7 @@ export const initialParams = {
   termMonths: 12,
   disbursementDate: "2025-10-16",
   firstDueDate: "2025-11-14",
+  simulationDays: 0,
   idi: 0.98495915,
   disbursementFeeRate: 0.80,
   dayCount: "30/360",

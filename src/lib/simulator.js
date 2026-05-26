@@ -24,6 +24,12 @@ function addMonths(date, months) {
   return new Date(Date.UTC(year, month, Math.min(day, lastDay)));
 }
 
+function addDays(date, days) {
+  const copy = new Date(date.getTime());
+  copy.setUTCDate(copy.getUTCDate() + days);
+  return copy;
+}
+
 function diffDaysActual(start, end) {
   return Math.round((end - start) / DAY_MS);
 }
@@ -457,6 +463,7 @@ export function simulateLoan(input) {
     termMonths: Math.max(0, Math.round(parseNumber(input.termMonths))),
     disbursementDate: parseDate(input.disbursementDate),
     firstDueDate: parseDate(input.firstDueDate),
+    simulationDays: Math.max(0, Math.round(parseNumber(input.simulationDays))),
     idi: parseNumber(input.idi, 1),
     disbursementFeeRate: parseNumber(input.disbursementFeeRate),
     dayCount: input.dayCount || "30/360",
@@ -488,6 +495,7 @@ export function simulateLoan(input) {
   const dayCountBase = params.dayCount === "30/360" ? 360 : 365;
   const principalUvc = params.creditUvc ? params.principal / params.idi : params.principal;
   const paymentRate = params.annualRate / 12;
+  const asOfDate = params.disbursementDate ? addDays(params.disbursementDate, params.simulationDays) : null;
   const paymentUvc = params.termMonths <= 0
     ? 0
     : paymentRate === 0
@@ -563,8 +571,15 @@ export function simulateLoan(input) {
     const baseDue = interestBs + amortBs + unpaidInterest + unpaidMora;
 
     const override = overrides[i] || {};
-    const paymentDate = override.paymentDate || dueDate;
-    const paymentAmount = Number.isFinite(override.paymentAmount) ? override.paymentAmount : baseDue;
+    const overridePaymentDate = override.paymentDate || null;
+    const overridePaymentAmount = Number.isFinite(override.paymentAmount) ? override.paymentAmount : 0;
+    const hasValidPayment = Boolean(
+      overridePaymentDate &&
+      overridePaymentAmount > 0 &&
+      (!asOfDate || overridePaymentDate.getTime() <= asOfDate.getTime())
+    );
+    const paymentDate = hasValidPayment ? overridePaymentDate : (asOfDate || dueDate);
+    const paymentAmount = hasValidPayment ? overridePaymentAmount : 0;
 
     let daysLate = diffDaysActual(dueDate, paymentDate);
     if (daysLate < 0) daysLate = 0;
@@ -615,7 +630,7 @@ export function simulateLoan(input) {
     const valorPaidUvcCapital = params.creditUvc ? paidPrincipalBs - principalPaidUvc * baseIdi : 0;
     const valorPaidUvcRend = params.creditUvc ? paidInterestBs - paidInterestUvc * baseIdi : 0;
 
-    const paidEarly = paymentDate.getTime() < dueDate.getTime();
+    const paidEarly = hasValidPayment ? paymentDate.getTime() < dueDate.getTime() : false;
 
     balanceUvc = Math.max(0, startBalanceUvc - principalPaidUvc);
 
@@ -744,17 +759,18 @@ export function simulateLoan(input) {
       }),
     };
 
-    // generar desglose diario entre periodStart (exclusive) y dueDate (inclusive)
+    // generar desglose diario entre periodStart (exclusive) y la fecha de corte/pago
     const dailyBreakdown = [];
     const moraBaseUvc = params.moraBase === "saldo" ? startBalanceUvc : amortUvc;
     let cumMoraUvc = 0;
     let cumMoraBs = 0;
     const dailyRateFactor = params.annualRate / dayCountBase; // per-day fraction of annual rate (uses 360/365 denominator)
+    const detailEndDate = hasValidPayment ? paymentDate : (asOfDate || dueDate);
     const cursor = new Date(periodStart.getTime());
     cursor.setUTCDate(cursor.getUTCDate() + 1);
     let cumInterestUvc = 0;
     let cumInterestBs = 0;
-    while (cursor <= dueDate) {
+    while (cursor <= detailEndDate) {
       const dayIdi = params.creditUvc ? idiForDate(cursor) : 1;
       const dayIdiText = params.creditUvc
         ? (typeof idiForDate.textFor === "function" ? idiForDate.textFor(cursor) : dayIdi.toFixed(8))
@@ -794,7 +810,7 @@ export function simulateLoan(input) {
       // amort and payment occur on dueDate normally, but if payment happens earlier
       // reflect amort/payment on the actual paymentDate
       const isDueDay = formatDate(cursor) === formatDate(dueDate);
-      const isPaymentDay = formatDate(cursor) === formatDate(paymentDate);
+      const isPaymentDay = hasValidPayment && formatDate(cursor) === formatDate(paymentDate);
       const amortUvcDay = isDueDay ? amortUvc : (isPaymentDay ? principalPaidUvc : 0);
       const amortBsDay = isDueDay ? amortBs : (isPaymentDay ? paidPrincipalBs : 0);
       const amortBaseBsDay = isDueDay ? amortBaseBs : (isPaymentDay ? (principalPaidUvc * baseIdi) : 0);
@@ -841,9 +857,9 @@ export function simulateLoan(input) {
     let cumMoraBs2 = 0;
     const startMoraDate = new Date(dueDate.getTime());
     startMoraDate.setUTCDate(startMoraDate.getUTCDate() + 1);
-    if (params.moraRate > 0 && startMoraDate <= paymentDate) {
+    if (params.moraRate > 0 && startMoraDate <= detailEndDate) {
       const cursor2 = new Date(startMoraDate.getTime());
-      while (cursor2 <= paymentDate) {
+      while (cursor2 <= detailEndDate) {
         const dayIdi2 = params.creditUvc ? idiForDate(cursor2) : 1;
         const dayIdiText2 = params.creditUvc
           ? (typeof idiForDate.textFor === "function" ? idiForDate.textFor(cursor2) : dayIdi2.toFixed(8))
@@ -894,6 +910,7 @@ export function simulateLoan(input) {
       paymentUvc: paymentUvcAdj,
       idiDue,
       idiTextDue,
+      dueAmount: baseDue,
       interestBs,
       interesBaseBs,
       interesVarBs,
@@ -903,6 +920,7 @@ export function simulateLoan(input) {
       cuotaBs: interestBs + amortBs,
       paymentDate,
       paymentAmount,
+      paymentApplied: paymentAmount,
       daysLate,
       moraBs,
       activeMora,
@@ -995,6 +1013,7 @@ export function simulateLoan(input) {
     totalCuota,
     totalOutstanding: schedule.length ? schedule[schedule.length - 1].balanceBs : params.principal,
     annualIrr,
+    asOfDate: formatDate(asOfDate || params.disbursementDate),
   };
 
   const accounts = buildAccounts(params.accounts);

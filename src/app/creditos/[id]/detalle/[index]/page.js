@@ -186,16 +186,16 @@ export default function InstallmentDetailPage() {
 
         <CardContent>
           <h3 className="mb-2 text-sm font-semibold">Desglose clasificacion</h3>
-          <div className="overflow-x-auto rounded-2xl border border-border bg-white">
+          <div className="overflow-x-auto rounded-2xl border border-border">
             <table className="min-w-[520px] text-sm">
-              <thead className="bg-secondary text-left text-xs uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Componente</th>
                   <th className="px-3 py-2">Activos</th>
                   <th className="px-3 py-2">Orden</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border [&>tr:hover]:bg-muted/50">
                 <tr><td className="px-3 py-2">Mora (Bs)</td><td className="px-3 py-2">{fmtMoney(row.activeMora)} Bs</td><td className="px-3 py-2">{fmtMoney(row.orderMora)} Bs</td></tr>
                 <tr><td className="px-3 py-2">Rendimiento/Interes (Bs)</td><td className="px-3 py-2">{fmtMoney(row.activeConv)} Bs</td><td className="px-3 py-2">{fmtMoney(row.orderConv)} Bs</td></tr>
                 <tr><td className="px-3 py-2">Moratorio 143</td><td className="px-3 py-2" colSpan={2}>{fmtMoney(row.moratorio143)} Bs</td></tr>
@@ -212,9 +212,9 @@ export default function InstallmentDetailPage() {
         </CardHeader>
         <CardContent>
           {row.moraBreakdown && row.moraBreakdown.length ? (
-            <div className="overflow-x-auto rounded-2xl border border-border bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-border">
               <table className="min-w-[900px] text-sm">
-                <thead className="bg-secondary text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
                     <th className="px-3 py-2">Fecha</th>
                     <th className="px-3 py-2">Feriado</th>
@@ -228,7 +228,7 @@ export default function InstallmentDetailPage() {
                     <th className="px-3 py-2">Genera</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border [&>tr:hover]:bg-muted/50">
                   {row.moraBreakdown.map((m) => (
                     <tr key={m.date}>
                       <td className="px-3 py-2">{m.date}</td>
@@ -254,48 +254,76 @@ export default function InstallmentDetailPage() {
 
       <Card className="glass">
         <CardHeader>
-          <CardTitle>Detalle diario — Cuota {row.index}</CardTitle>
+          <div className="flex flex-col md:flex-row items-baseline justify-between gap-4">
+            <CardTitle>Detalle diario — Cuota {row.index}</CardTitle>
+            <div className="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-wider">
+              <span className="rounded-sm bg-[#334155] px-2 py-1 text-white shadow-sm">Info</span>
+              <span className="rounded-sm bg-emerald-600 px-2 py-1 text-white shadow-sm">IDI</span>
+              <span className="rounded-sm bg-indigo-600 px-2 py-1 text-white shadow-sm">UVC</span>
+              <span className="rounded-sm bg-amber-600 px-2 py-1 text-white shadow-sm">Bolívares</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-2xl border border-border bg-white">
-            <table className="min-w-[1200px] text-sm">
-              <thead className="bg-secondary text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2">Fecha</th>
-                  <th className="px-3 py-2">Feriado</th>
-                  <th className="px-3 py-2">Fin semana</th>
-                  <th className="px-3 py-2">Origen IDI</th>
-                  <th className="px-3 py-2">IDI texto</th>
-                  <th className="px-3 py-2">IDI</th>
-                  <th className="px-3 py-2">Saldo UVC ini</th>
-                  <th className="px-3 py-2">Interes diario UVC</th>
-                  <th className="px-3 py-2">Interes diario Bs</th>
-                  <th className="px-3 py-2">Acum. Interes UVC</th>
-                  <th className="px-3 py-2">Acum. Interes Bs</th>
-                  <th className="px-3 py-2">Amort UVC (dia)</th>
-                  <th className="px-3 py-2">Amort Bs (dia)</th>
-                  <th className="px-3 py-2">Pago Bs (dia)</th>
-                  <th className="px-3 py-2">Saldo UVC fin</th>
+          <div className="overflow-x-auto rounded-2xl border border-border">
+            <table className="schedule-table min-w-[2000px] text-sm">
+              <thead>
+                <tr className="group-row">
+                  <th colSpan={4} className="group-info">Info</th>
+                  <th colSpan={2} className="group-idi">IDI</th>
+                  <th colSpan={6} className="group-uvc">UVC</th>
+                  <th colSpan={8} className="group-bs">Bolivares</th>
+                </tr>
+                <tr className="bg-secondary/50">
+                  <th className="px-2 py-2 text-center">Fecha</th>
+                  <th className="px-2 py-2 text-center">Feriado</th>
+                  <th className="px-2 py-2 text-center">Fin semana</th>
+                  <th className="px-2 py-2 text-center">Origen IDI</th>
+                  <th className="px-2 py-2 text-center">IDI texto</th>
+                  <th className="px-2 py-2 text-center">IDI</th>
+                  <th className="px-2 py-2 text-center">Saldo ini</th>
+                  <th className="px-2 py-2 text-center">Int. dia</th>
+                  <th className="px-2 py-2 text-center">Mora dia</th>
+                  <th className="px-2 py-2 text-center">Int. acum</th>
+                  <th className="px-2 py-2 text-center">Amort</th>
+                  <th className="px-2 py-2 text-center">Saldo fin</th>
+                  <th className="px-2 py-2 text-center">Int. dia</th>
+                  <th className="px-2 py-2 text-center">Int. acum</th>
+                  <th className="px-2 py-2 text-center">Mora dia</th>
+                  <th className="px-2 py-2 text-center">Mora acum</th>
+                  <th className="px-2 py-2 text-center">Amort Base</th>
+                  <th className="px-2 py-2 text-center">Amort Var</th>
+                  <th className="px-2 py-2 text-center">Amort Total</th>
+                  <th className="px-2 py-2 text-center">Pago (dia)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border [&>tr:hover]:bg-muted/50">
                 {row.dailyBreakdown?.map((d) => (
                   <tr key={d.date}>
-                    <td className="px-3 py-2">{d.date}</td>
-                    <td className="px-3 py-2">{d.isHoliday ? "Feriado" : ""}</td>
-                    <td className="px-3 py-2">{d.isWeekend ? "Si" : ""}</td>
-                    <td className="px-3 py-2">{d.idiSource === "BCV" ? "BCV" : "Inventado"}</td>
-                    <td className="px-3 py-2">{d.idiText || "-"}</td>
-                    <td className="px-3 py-2">{fmtUvc(d.idi)}</td>
-                    <td className="px-3 py-2">{fmtUvc(d.startBalanceUvc)} UVC</td>
-                    <td className="px-3 py-2">{fmtUvc(d.dailyInterestUvc)} UVC</td>
-                    <td className="px-3 py-2">{fmtMoney(d.dailyInterestBs)} Bs</td>
-                    <td className="px-3 py-2">{fmtUvc(d.cumInterestUvc)} UVC</td>
-                    <td className="px-3 py-2">{fmtMoney(d.cumInterestBs)} Bs</td>
-                    <td className="px-3 py-2">{fmtUvc(d.amortUvcDay)} UVC</td>
-                    <td className="px-3 py-2">{fmtMoney(d.amortBsDay)} Bs</td>
-                    <td className="px-3 py-2">{fmtMoney(d.paymentBsDay)} Bs</td>
-                    <td className="px-3 py-2">{fmtUvc(d.balanceUvcEndDay)} UVC</td>
+                    {/* INFO */}
+                    <td className="px-2 py-1 text-center font-medium">{d.date}</td>
+                    <td className="px-2 py-1 text-center text-muted-foreground">{d.isHoliday ? "Feriado" : "—"}</td>
+                    <td className="px-2 py-1 text-center text-muted-foreground">{d.isWeekend ? "Si" : "—"}</td>
+                    <td className="px-2 py-1 text-center">{d.idiSource === "BCV" ? "BCV" : "Simulado"}</td>
+                    {/* IDI */}
+                    <td className="px-2 py-1 col-idi whitespace-nowrap text-xs text-center">{d.idiText || "—"}</td>
+                    <td className="px-2 py-1 col-idi font-mono text-center">{fmtUvc(d.idi)}</td>
+                    {/* UVC */}
+                    <td className="px-2 py-1 col-uvc text-right font-mono">{fmtUvc(d.startBalanceUvc)}</td>
+                    <td className="px-2 py-1 col-uvc text-right font-mono">{fmtUvc(d.dailyInterestUvc)}</td>
+                    <td className="px-2 py-1 col-uvc text-right font-mono text-rose-500">{fmtUvc(d.dailyMoraUvc)}</td>
+                    <td className="px-2 py-1 col-uvc text-right font-mono">{fmtUvc(d.cumInterestUvc)}</td>
+                    <td className="px-2 py-1 col-uvc text-right font-mono text-emerald-600">{fmtUvc(d.amortUvcDay)}</td>
+                    <td className="px-2 py-1 col-uvc text-right font-mono font-bold">{fmtUvc(d.balanceUvcEndDay)}</td>
+                    {/* BS */}
+                    <td className="px-2 py-1 col-bs text-right">{fmtMoney(d.dailyInterestBs)}</td>
+                    <td className="px-2 py-1 col-bs text-right font-semibold">{fmtMoney(d.cumInterestBs)}</td>
+                    <td className="px-2 py-1 col-bs text-right text-rose-500">{fmtMoney(d.dailyMoraBs)}</td>
+                    <td className="px-2 py-1 col-bs text-right font-semibold text-rose-500">{fmtMoney(d.cumMoraBs)}</td>
+                    <td className="px-2 py-1 col-bs text-right">{fmtMoney(d.amortBaseBsDay)}</td>
+                    <td className="px-2 py-1 col-bs text-right">{fmtMoney(d.amortVarBsDay)}</td>
+                    <td className="px-2 py-1 col-bs text-right text-emerald-600 font-medium">{fmtMoney(d.amortBsDay)}</td>
+                    <td className="px-2 py-1 col-bs text-right font-bold text-sky-600">{fmtMoney(d.paymentBsDay)}</td>
                   </tr>
                 ))}
               </tbody>

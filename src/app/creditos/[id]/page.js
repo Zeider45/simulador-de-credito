@@ -196,6 +196,10 @@ export default function LoanPage() {
   }, [loan?.id]);
 
   const ledgerRows = useMemo(() => buildLedgerRows(loan?.result), [loan?.result]);
+  const simulationCutoffDate = useMemo(() => {
+    const asOf = loan?.result?.summary?.asOfDate;
+    return asOf ? new Date(`${asOf}T00:00:00.000Z`) : null;
+  }, [loan?.result?.summary?.asOfDate]);
   const selectClass = "h-10 w-full rounded-xl border border-border bg-card text-foreground px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
   const persistLoan = (nextLoan) => {
@@ -244,10 +248,6 @@ export default function LoanPage() {
       persistLoan({
         ...loan,
         result: data,
-        payments: data.schedule.map((row) => ({
-          paymentDate: row.paymentDate?.slice(0, 10),
-          paymentAmount: row.paymentAmount,
-        })),
       });
     } catch (err) {
       setError(err.message || "No se pudo simular");
@@ -513,6 +513,11 @@ export default function LoanPage() {
                     <Input name="disbursementDate" type="date" value={loan.params.disbursementDate} onChange={handleInputChange} />
                   </div>
                   <div className="space-y-2">
+                    <Label>Dias transcurridos</Label>
+                    <Input name="simulationDays" type="number" step="1" min="0" value={loan.params.simulationDays} onChange={handleInputChange} />
+                    <p className="text-xs text-muted-foreground">Cuenta los dias desde el desembolso para simular mora, valoracion y cuotas vencidas.</p>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Primera fecha de pago</Label>
                     <Input name="firstDueDate" type="date" value={loan.params.firstDueDate} onChange={handleInputChange} />
                   </div>
@@ -644,6 +649,24 @@ export default function LoanPage() {
                       )}
                     </div>
                   </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-secondary/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <span className="mr-1 text-[10px] font-bold tracking-[0.22em] text-foreground">Leyenda</span>
+                    <span className="rounded-sm bg-[#334155] px-2 py-1 text-white">Info</span>
+                    <span className="rounded-sm bg-indigo-600 px-2 py-1 text-white">UVC</span>
+                    <span className="rounded-sm bg-emerald-600 px-2 py-1 text-white">IDI</span>
+                    <span className="rounded-sm bg-amber-600 px-2 py-1 text-white">Bolivares</span>
+                    <span className="rounded-sm bg-sky-600 px-2 py-1 text-white">Pagos</span>
+                    <span className="rounded-sm bg-rose-600 px-2 py-1 text-white">Mora</span>
+                    <span className="rounded-sm bg-violet-600 px-2 py-1 text-white">Activos</span>
+                    <span className="rounded-sm bg-slate-600 px-2 py-1 text-white">Orden</span>
+                    <span className="rounded-sm bg-fuchsia-600 px-2 py-1 text-white">Moratorio</span>
+                    <span className="rounded-sm bg-lime-600 px-2 py-1 text-white">Valorizacion</span>
+                    <span className="rounded-sm bg-gray-700 px-2 py-1 text-white">Estado</span>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Corte actual: {loan.params.simulationDays || 0} dias desde desembolso
+                    {loan.result?.summary?.asOfDate ? ` · fecha ${loan.result.summary.asOfDate}` : ""}
+                  </p>
                 </CardHeader>
                 <CardContent className={compact ? "compact" : ""}>
                   {!loan.result ? (
@@ -687,7 +710,14 @@ export default function LoanPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {loan.result.schedule.map((row, paymentIndex) => (
+                          {loan.result.schedule.map((row, paymentIndex) => {
+                            const currentPayment = loan.payments[paymentIndex] || {};
+                            const rowDueDate = row.dueDate ? new Date(`${row.dueDate.slice(0, 10)}T00:00:00.000Z`) : null;
+                            const previousPaid = paymentIndex === 0 || Number(loan.payments[paymentIndex - 1]?.paymentAmount || 0) > 0;
+                            const canEditPayment = !simulationCutoffDate || !rowDueDate || rowDueDate <= simulationCutoffDate;
+                            const paymentLocked = !(previousPaid && canEditPayment);
+
+                            return (
                             <tr key={row.index}>
                               <td className="font-semibold">{row.index}</td>
                               <td>{row.dueDate?.slice(0, 10)}</td>
@@ -711,14 +741,33 @@ export default function LoanPage() {
                               </td>
                               <td><Hint value={fmtMoneyUnit(row.balanceBs)} tooltip={row.explain?.saldoBs} /></td>
                               <td>
-                                <input type="date"
-                                  value={loan.payments[paymentIndex]?.paymentDate || row.dueDate?.slice(0, 10)}
-                                  onChange={(e) => handlePaymentChange(paymentIndex, "paymentDate", e.target.value)} />
+                                <div className="space-y-1">
+                                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                                    Debe pagarse: {row.dueDate?.slice(0, 10)}
+                                  </p>
+                                  <input
+                                    type="date"
+                                    className="w-full rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={currentPayment.paymentDate || row.dueDate?.slice(0, 10) || ""}
+                                    disabled={paymentLocked}
+                                    onChange={(e) => handlePaymentChange(paymentIndex, "paymentDate", e.target.value)}
+                                  />
+                                </div>
                               </td>
                               <td>
-                                <input type="number" step="0.01"
-                                  value={loan.payments[paymentIndex]?.paymentAmount ?? row.paymentAmount}
-                                  onChange={(e) => handlePaymentChange(paymentIndex, "paymentAmount", Number(e.target.value))} />
+                                <div className="space-y-1">
+                                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                                    Monto esperado: {fmtMoneyUnit(row.dueAmount || row.paymentAmount)}
+                                  </p>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    className="w-full rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                    value={currentPayment.paymentAmount ?? ""}
+                                    disabled={paymentLocked}
+                                    onChange={(e) => handlePaymentChange(paymentIndex, "paymentAmount", e.target.value)}
+                                  />
+                                </div>
                               </td>
                               <td>{fmtMoneyUnit(row.paidPrincipalBs || 0)}</td>
                               <td>{fmtUvcUnit(row.paidPrincipalUvc || 0)}</td>
@@ -738,7 +787,7 @@ export default function LoanPage() {
                               <td>{row.status}</td>
                               <td><Hint value={fmtUvcUnit(row.balanceUvc)} tooltip={row.explain?.balanceUvc} /></td>
                             </tr>
-                          ))}
+                          ); })}
                         </tbody>
                       </table>
                     </div>
