@@ -11,6 +11,7 @@ const badgeVariants = cva(
         success: "bg-emerald-100 text-emerald-800 border-emerald-200",
         warning: "bg-amber-100 text-amber-800 border-amber-200",
         muted: "bg-muted text-muted-foreground",
+        destructive: "bg-rose-100 text-rose-800 border-rose-200",
       },
     },
     defaultVariants: {

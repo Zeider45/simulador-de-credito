@@ -7,7 +7,7 @@ export async function GET() {
     const dbPath = path.join(process.cwd(), 'data', 'idi_series.db');
     const db = new sqlite3.Database(dbPath);
     const rows = await new Promise((resolve, reject) => {
-      db.all('SELECT date, idi, idi_text FROM idi_series ORDER BY date ASC', (err, rows) => {
+      db.all('SELECT date, idi FROM idi_series ORDER BY date ASC', (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
       });

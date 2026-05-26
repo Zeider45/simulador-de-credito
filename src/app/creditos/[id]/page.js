@@ -28,42 +28,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { BalanceChart, PaymentCompositionChart } from "@/components/AmortizationChart";
 
-function moneyFormatter() {
-  return new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+const moneyFmt = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const uvcFmt = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+const pctFmt = new Intl.NumberFormat("es-VE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const moneyFmt = moneyFormatter();
-
-const uvcFormatter = new Intl.NumberFormat("es-VE", {
-  minimumFractionDigits: 6,
-  maximumFractionDigits: 6,
-});
-
-const percentFormatter = new Intl.NumberFormat("es-VE", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-function formatMoney(value) {
-  return moneyFmt.format(value || 0);
-}
-
-function formatUvc(value) {
-  return uvcFormatter.format(value || 0);
-}
-
-function formatPercent(value) {
-  return percentFormatter.format(value || 0);
-}
-
-function formatMoneyWithUnit(value) {
-  return `${formatMoney(value)} Bs`;
-}
-
-function formatUvcWithUnit(value) {
-  return `${formatUvc(value)} UVC`;
-}
+function fmtMoney(v) { return moneyFmt.format(v || 0); }
+function fmtUvc(v) { return uvcFmt.format(v || 0); }
+function fmtPct(v) { return pctFmt.format(v || 0); }
+function fmtMoneyUnit(v) { return `${fmtMoney(v)} Bs`; }
+function fmtUvcUnit(v) { return `${fmtUvc(v)} UVC`; }
 
 function Hint({ value, tooltip }) {
   if (!tooltip) return <span>{value}</span>;
@@ -75,32 +50,26 @@ function Hint({ value, tooltip }) {
 }
 
 function parseAccounts(text) {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(text); } catch { return null; }
 }
 
 async function fetchSimulation(params, payments, accountsText) {
-  const response = await fetch("/api/simulate", {
+  const res = await fetch("/api/simulate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...params, payments, accounts: parseAccounts(accountsText) }),
   });
-
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody?.error || "No se pudo simular");
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.error || "No se pudo simular");
   }
-
-  return response.json();
+  return res.json();
 }
 
 function buildLedgerRows(result) {
   if (!result?.ledger) return [];
   return result.ledger.flatMap((entry) =>
-    entry.lines.map((line, index) => ({
+    entry.lines.map((line, i) => ({
       entryDate: entry.date,
       entryDescription: entry.description,
       account: `${line.account.code} ${line.account.name}`,
@@ -108,7 +77,7 @@ function buildLedgerRows(result) {
       credit: line.credit,
       totalDebit: entry.totalDebit,
       totalCredit: entry.totalCredit,
-      rowId: `${entry.date}-${entry.description}-${index}`,
+      rowId: `${entry.date}-${entry.description}-${i}`,
     }))
   );
 }
@@ -117,10 +86,73 @@ function normalizeLoan(raw) {
   if (!raw) return null;
   return {
     ...raw,
+    name: raw.name || "",
     params: { ...initialParams, ...(raw.params || {}) },
     accountsText: raw.accountsText || DEFAULT_ACCOUNTS,
     payments: Array.isArray(raw.payments) ? raw.payments : [],
   };
+}
+
+function exportScheduleToCSV(schedule, loanName) {
+  const headers = [
+    "#", "Vencimiento", "Dias", "Saldo UVC", "Interes UVC", "Amort UVC", "Cuota UVC",
+    "IDI texto", "IDI venc", "Interes Bs", "Amort Bs", "Cuota Bs", "Saldo Bs",
+    "Pago fecha", "Pago Bs", "Dias mora", "Mora Bs", "Estado",
+  ];
+  const rows = schedule.map((r) => [
+    r.index,
+    r.dueDate?.slice(0, 10) || "",
+    r.daysPeriod,
+    (r.startBalanceUvc || 0).toFixed(6),
+    (r.interestUvc || 0).toFixed(6),
+    (r.amortUvc || 0).toFixed(6),
+    (r.paymentUvc || 0).toFixed(6),
+    r.idiTextDue || "",
+    (r.idiDue || 0).toFixed(6),
+    (r.interestBs || 0).toFixed(2),
+    (r.amortBs || 0).toFixed(2),
+    (r.cuotaBs || 0).toFixed(2),
+    (r.balanceBs || 0).toFixed(2),
+    r.paymentDate?.slice(0, 10) || "",
+    (r.paymentAmount || 0).toFixed(2),
+    r.daysLate || 0,
+    (r.moraBs || 0).toFixed(2),
+    r.status || "",
+  ]);
+  const csv = [headers, ...rows]
+    .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${loanName || "simulacion"}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportLedgerToCSV(ledgerRows, loanName) {
+  const headers = ["Fecha", "Descripcion", "Cuenta", "Debe", "Haber", "Total Debe", "Total Haber"];
+  const rows = ledgerRows.map((r) => [
+    r.entryDate, r.entryDescription, r.account,
+    r.debit ? r.debit.toFixed(2) : "",
+    r.credit ? r.credit.toFixed(2) : "",
+    r.totalDebit.toFixed(2), r.totalCredit.toFixed(2),
+  ]);
+  const csv = [headers, ...rows]
+    .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${loanName || "asientos"}_asientos.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export default function LoanPage() {
@@ -131,12 +163,18 @@ export default function LoanPage() {
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
   const [idiOptions, setIdiOptions] = useState([]);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [compact, setCompact] = useState(false);
 
   useEffect(() => {
     if (!loanId) return;
     const loans = loadLoans();
     const found = loans.find((item) => item.id === loanId);
-    setLoan(normalizeLoan(found));
+    const normalized = normalizeLoan(found);
+    setLoan(normalized);
+    setNameDraft(normalized?.name || "");
     setReady(true);
   }, [loanId]);
 
@@ -152,29 +190,25 @@ export default function LoanPage() {
           const latest = rows[rows.length - 1];
           persistLoan({ ...loan, params: { ...loan.params, idi: latest.idi, idiDate: latest.date } });
         }
-      } catch (e) {
-        // ignore
-      }
+      } catch { /* ignore */ }
     }
     loadIdi();
-  }, [loan]);
+  }, [loan?.id]);
 
-  const columnHints = loan?.result?.columnHints || {};
   const ledgerRows = useMemo(() => buildLedgerRows(loan?.result), [loan?.result]);
-  const selectClass = "h-10 w-full rounded-xl border border-border bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+  const selectClass = "h-10 w-full rounded-xl border border-border bg-card text-foreground px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
   const persistLoan = (nextLoan) => {
     const now = new Date().toISOString();
     const payload = { ...nextLoan, createdAt: nextLoan.createdAt || now, updatedAt: now };
     setLoan(payload);
     const loans = loadLoans();
-    const next = upsertLoan(loans, payload);
-    saveLoans(next);
+    saveLoans(upsertLoan(loans, payload));
   };
 
-  const handleInputChange = (event) => {
+  const handleInputChange = (e) => {
     if (!loan) return;
-    const { name, value, type, checked } = event.target;
+    const { name, value, type, checked } = e.target;
     persistLoan({ ...loan, params: { ...loan.params, [name]: type === "checkbox" ? checked : value } });
   };
 
@@ -195,6 +229,12 @@ export default function LoanPage() {
     persistLoan({ ...loan, payments: nextPayments });
   };
 
+  const handleSaveName = () => {
+    if (!loan) return;
+    persistLoan({ ...loan, name: nameDraft });
+    setEditingName(false);
+  };
+
   const handleCalculate = async (applyPayments = false) => {
     if (!loan) return;
     setLoading(true);
@@ -204,7 +244,10 @@ export default function LoanPage() {
       persistLoan({
         ...loan,
         result: data,
-        payments: data.schedule.map((row) => ({ paymentDate: row.paymentDate?.slice(0, 10), paymentAmount: row.paymentAmount })),
+        payments: data.schedule.map((row) => ({
+          paymentDate: row.paymentDate?.slice(0, 10),
+          paymentAmount: row.paymentAmount,
+        })),
       });
     } catch (err) {
       setError(err.message || "No se pudo simular");
@@ -214,8 +257,14 @@ export default function LoanPage() {
   };
 
   if (!ready) {
-    return <div className="text-sm text-muted-foreground">Cargando credito...</div>;
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        Cargando credito…
+      </div>
+    );
   }
+
   if (!loan) {
     return (
       <Card className="glass">
@@ -225,21 +274,48 @@ export default function LoanPage() {
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline">
-            <Link href="/">Volver al home</Link>
+            <Link href="/">Volver al inicio</Link>
           </Button>
         </CardContent>
       </Card>
     );
   }
 
+  const displayName = loan.name || `Credito ${loan.id?.slice(0, 8)}`;
+  const summary = loan.result?.summary;
+
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">Simulacion individual</p>
-          <h1 className="mt-2 text-3xl font-semibold">Credito {loan.id?.slice(0, 8)}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Ajusta parametros, calendario de pagos y plan de cuentas para este credito.
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+            Simulacion individual
+          </p>
+          {editingName ? (
+            <div className="mt-2 flex items-center gap-2">
+              <Input
+                className="h-9 text-2xl font-semibold w-64"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveName(); if (e.key === "Escape") setEditingName(false); }}
+                autoFocus
+              />
+              <Button size="sm" onClick={handleSaveName}>Guardar</Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditingName(false)}>Cancelar</Button>
+            </div>
+          ) : (
+            <button
+              className="mt-2 flex items-center gap-2 group text-left"
+              onClick={() => { setNameDraft(loan.name || ""); setEditingName(true); }}
+              title="Editar nombre"
+            >
+              <h1 className="text-3xl font-semibold">{displayName}</h1>
+              <span className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity text-sm">✎</span>
+            </button>
+          )}
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ajusta parametros, pagos y plan de cuentas.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -247,7 +323,12 @@ export default function LoanPage() {
             <Link href="/">Volver</Link>
           </Button>
           <Button onClick={() => handleCalculate(false)} disabled={loading}>
-            {loading ? "Calculando..." : "Calcular"}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Calculando…
+              </span>
+            ) : "Calcular"}
           </Button>
           <Button variant="secondary" onClick={() => handleCalculate(true)} disabled={loading}>
             Aplicar pagos
@@ -255,47 +336,39 @@ export default function LoanPage() {
         </div>
       </header>
 
-      {error ? (
-        <Card className="border-rose-200 bg-rose-50/70">
-          <CardContent className="py-4 text-sm text-rose-800">{error}</CardContent>
+      {error && (
+        <Card className="border-rose-500/30 bg-rose-500/10">
+          <CardContent className="py-4 text-sm text-rose-700 dark:text-rose-400">{error}</CardContent>
         </Card>
-      ) : null}
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <aside className="space-y-4">
+      <div className={`grid gap-6 ${sidebarOpen ? "lg:grid-cols-[280px_1fr]" : "grid-cols-1"}`}>
+        {/* Sidebar */}
+        <aside className={`space-y-4 ${sidebarOpen ? "" : "hidden"}`}>
           <Card className="glass">
             <CardHeader>
               <CardTitle>Resumen</CardTitle>
-              <CardDescription>Indicadores principales de la simulacion actual.</CardDescription>
+              <CardDescription>Indicadores de la simulacion actual.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Neto recibido</span>
-                <span className="font-semibold">{loan.result ? formatMoneyWithUnit(loan.result.summary.netReceived) : "-"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Cuota UVC</span>
-                <span className="font-semibold">{loan.result ? formatUvcWithUnit(loan.result.summary.paymentUvc) : "-"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Cuota Bs prom</span>
-                <span className="font-semibold">{loan.result ? formatMoneyWithUnit(loan.result.summary.avgCuota) : "-"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Interes total</span>
-                <span className="font-semibold">{loan.result ? formatMoneyWithUnit(loan.result.summary.totalInterest) : "-"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Mora total</span>
-                <span className="font-semibold">{loan.result ? formatMoneyWithUnit(loan.result.summary.totalMora) : "-"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Saldo final</span>
-                <span className="font-semibold">{loan.result ? formatMoneyWithUnit(loan.result.summary.totalOutstanding) : "-"}</span>
-              </div>
+              {[
+                { label: "Neto recibido", value: summary ? fmtMoneyUnit(summary.netReceived) : "—" },
+                { label: "Cuota UVC", value: summary ? fmtUvcUnit(summary.paymentUvc) : "—" },
+                { label: "Cuota Bs prom", value: summary ? fmtMoneyUnit(summary.avgCuota) : "—" },
+                { label: "Interes total", value: summary ? fmtMoneyUnit(summary.totalInterest) : "—" },
+                { label: "Mora total", value: summary ? fmtMoneyUnit(summary.totalMora) : "—" },
+                { label: "Saldo final", value: summary ? fmtMoneyUnit(summary.totalOutstanding) : "—" },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-semibold">{value}</span>
+                </div>
+              ))}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">TIR anual</span>
-                <Badge>{loan.result && loan.result.summary.annualIrr !== null ? `${formatPercent(loan.result.summary.annualIrr * 100)} %` : "-"}</Badge>
+                <Badge>
+                  {summary?.annualIrr != null ? `${fmtPct(summary.annualIrr * 100)} %` : "—"}
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -303,7 +376,7 @@ export default function LoanPage() {
           <Card className="glass">
             <CardHeader>
               <CardTitle>IDI publicado</CardTitle>
-              <CardDescription>Selecciona el IDI desde la base BCV.</CardDescription>
+              <CardDescription>Selecciona el IDI desde base BCV.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <Label>IDI fecha</Label>
@@ -325,14 +398,14 @@ export default function LoanPage() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground">Se usa el IDI del BCV para valoracion diaria.</p>
+              <p className="text-xs text-muted-foreground">IDI del BCV para valoracion diaria.</p>
             </CardContent>
           </Card>
 
           <Card className="glass">
             <CardHeader>
               <CardTitle>Reconduccion tras prepago</CardTitle>
-              <CardDescription>Configura el ajuste automatico del calendario.</CardDescription>
+              <CardDescription>Ajuste automatico del calendario.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between text-sm">
@@ -349,7 +422,7 @@ export default function LoanPage() {
               </div>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button variant="outline">Configurar</Button>
+                  <Button variant="outline" size="sm">Configurar</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
@@ -371,12 +444,7 @@ export default function LoanPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>Accion del prepago</Label>
-                      <select
-                        className={selectClass}
-                        name="prepayAction"
-                        value={loan.params.prepayAction}
-                        onChange={handleInputChange}
-                      >
+                      <select className={selectClass} name="prepayAction" value={loan.params.prepayAction} onChange={handleInputChange}>
                         <option value="reduce_term">Reducir plazo</option>
                         <option value="reduce_installment">Reducir cuota</option>
                       </select>
@@ -393,32 +461,41 @@ export default function LoanPage() {
           </Card>
 
           <Card className="glass">
-            <CardHeader>
-              <CardTitle>Notas rapidas</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Notas rapidas</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm text-muted-foreground">
               <p>La cuota fija se calcula en UVC con tasa anual/12 y se valora por IDI.</p>
-              <p>El IDI futuro crece segun el incremento configurado si no hay datos.</p>
+              <p>El IDI futuro crece segun el incremento configurado si no hay datos BCV.</p>
               <p>La vista de detalle muestra mora diaria, feriados y origen IDI.</p>
             </CardContent>
           </Card>
         </aside>
 
-        <section className="space-y-6">
+        {/* Main content */}
+        <section className="space-y-6 min-w-0">
           <Tabs defaultValue="params">
             <TabsList className="flex flex-wrap gap-2">
               <TabsTrigger value="params">Parametros</TabsTrigger>
               <TabsTrigger value="simulacion">Simulacion</TabsTrigger>
+              <TabsTrigger value="graficos">Graficos</TabsTrigger>
               <TabsTrigger value="asientos">Asientos</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="params">
+            {/* PARAMS TAB */}
+            <TabsContent value="params" className="space-y-4">
               <Card className="glass">
                 <CardHeader>
                   <CardTitle>Parametros del credito</CardTitle>
                   <CardDescription>Define montos, tasas y reglas de mora.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="space-y-2 md:col-span-2 xl:col-span-3">
+                    <Label>Nombre del credito</Label>
+                    <Input
+                      placeholder="Ej: Credito hipotecario cliente A"
+                      value={loan.name || ""}
+                      onChange={(e) => persistLoan({ ...loan, name: e.target.value })}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label>Capital nominal (Bs)</Label>
                     <Input name="principal" type="number" step="0.01" value={loan.params.principal} onChange={handleInputChange} />
@@ -504,27 +581,22 @@ export default function LoanPage() {
                   </div>
                 </CardContent>
                 <CardContent className="grid gap-3 md:grid-cols-3">
-                  <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold">Credito en UVC</p>
-                      <p className="text-xs text-muted-foreground">Aplica IDI</p>
+                  {[
+                    { name: "creditUvc", label: "Credito en UVC", desc: "Aplica IDI", key: "creditUvc" },
+                    { name: "applyPrepay", label: "Aplicar prepago", desc: "Pago extra a capital", key: "applyPrepay" },
+                    { name: "adjustToBusinessDay", label: "Ajuste a dia habil", desc: "Mueve vencimientos", key: "adjustToBusinessDay" },
+                  ].map(({ name, label, desc }) => (
+                    <div key={name} className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold">{label}</p>
+                        <p className="text-xs text-muted-foreground">{desc}</p>
+                      </div>
+                      <Switch
+                        checked={loan.params[name]}
+                        onCheckedChange={(checked) => handleSwitchChange(name, checked)}
+                      />
                     </div>
-                    <Switch checked={loan.params.creditUvc} onCheckedChange={(checked) => handleSwitchChange("creditUvc", checked)} />
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold">Aplicar prepago</p>
-                      <p className="text-xs text-muted-foreground">Pago extra a capital</p>
-                    </div>
-                    <Switch checked={loan.params.applyPrepay} onCheckedChange={(checked) => handleSwitchChange("applyPrepay", checked)} />
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold">Ajuste a dia habil</p>
-                      <p className="text-xs text-muted-foreground">Mueve vencimientos</p>
-                    </div>
-                    <Switch checked={loan.params.adjustToBusinessDay} onCheckedChange={(checked) => handleSwitchChange("adjustToBusinessDay", checked)} />
-                  </div>
+                  ))}
                 </CardContent>
               </Card>
 
@@ -534,149 +606,247 @@ export default function LoanPage() {
                   <CardDescription>Personaliza codigos y nombres de cuentas.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Textarea rows={8} value={loan.accountsText} onChange={(event) => handleAccountsChange(event.target.value)} />
+                  <Textarea rows={8} value={loan.accountsText} onChange={(e) => handleAccountsChange(e.target.value)} />
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* SIMULACION TAB */}
             <TabsContent value="simulacion">
               <Card className="glass">
                 <CardHeader>
-                  <CardTitle>Tabla de simulacion</CardTitle>
-                  <CardDescription>Consulta cuotas, pagos y valorizacion. Haz clic en la cuota para detalle.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto rounded-2xl border border-border bg-white">
-                    <table className="min-w-[1700px] text-xs">
-                      <thead className="bg-secondary text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                        <tr>
-                          <th className="px-3 py-2">#</th>
-                          <th className="px-3 py-2">Vencimiento</th>
-                          <th className="px-3 py-2">Dias</th>
-                          <th className="px-3 py-2">Saldo UVC</th>
-                          <th className="px-3 py-2">Interes UVC</th>
-                          <th className="px-3 py-2">Amort UVC</th>
-                          <th className="px-3 py-2">Cuota UVC</th>
-                          <th className="px-3 py-2">IDI texto</th>
-                          <th className="px-3 py-2">IDI venc</th>
-                          <th className="px-3 py-2">Interes Bs</th>
-                          <th className="px-3 py-2">Interes Base Bs</th>
-                          <th className="px-3 py-2">Interes Var Bs</th>
-                          <th className="px-3 py-2">Amort Bs</th>
-                          <th className="px-3 py-2">Amort Base Bs</th>
-                          <th className="px-3 py-2">Amort Var Bs</th>
-                          <th className="px-3 py-2">Cuota Bs</th>
-                          <th className="px-3 py-2">Saldo Bs</th>
-                          <th className="px-3 py-2">Pago fecha</th>
-                          <th className="px-3 py-2">Pago Bs</th>
-                          <th className="px-3 py-2">Pago capital Bs</th>
-                          <th className="px-3 py-2">Pago capital UVC</th>
-                          <th className="px-3 py-2">Pago adelantado</th>
-                          <th className="px-3 py-2">Dias mora</th>
-                          <th className="px-3 py-2">Mora Bs</th>
-                          <th className="px-3 py-2">Rend mora act</th>
-                          <th className="px-3 py-2">Rend conv act</th>
-                          <th className="px-3 py-2">Rend mora ord</th>
-                          <th className="px-3 py-2">Rend conv ord</th>
-                          <th className="px-3 py-2">Moratorio 143</th>
-                          <th className="px-3 py-2">Moratorio 819</th>
-                          <th className="px-3 py-2">Val UVC cap</th>
-                          <th className="px-3 py-2">Val UVC rend</th>
-                          <th className="px-3 py-2">Estado</th>
-                          <th className="px-3 py-2">Saldo UVC fin</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border text-sm">
-                        {loan.result?.schedule?.map((row, paymentIndex) => (
-                          <tr key={row.index} className="hover:bg-secondary/40">
-                            <td className="px-3 py-2 font-semibold">{row.index}</td>
-                            <td className="px-3 py-2">{row.dueDate?.slice(0, 10)}</td>
-                            <td className="px-3 py-2">{row.daysPeriod}</td>
-                            <td className="px-3 py-2"><Hint value={formatUvcWithUnit(row.startBalanceUvc)} tooltip={row.explain?.startBalanceUvc} /></td>
-                            <td className="px-3 py-2"><Hint value={formatUvcWithUnit(row.interestUvc)} tooltip={row.explain?.interestUvc} /></td>
-                            <td className="px-3 py-2"><Hint value={formatUvcWithUnit(row.amortUvc)} tooltip={row.explain?.amortUvc} /></td>
-                            <td className="px-3 py-2"><Hint value={formatUvcWithUnit(row.paymentUvc)} tooltip={row.explain?.paymentUvc} /></td>
-                            <td className="px-3 py-2"><Hint value={row.idiTextDue || "-"} tooltip={row.explain?.idiDue} /></td>
-                            <td className="px-3 py-2"><Hint value={formatUvc(row.idiDue)} tooltip={row.explain?.idiDue} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.interestBs)} tooltip={row.explain?.interestBs} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.interesBaseBs)} tooltip={row.explain?.interestBaseBs} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.interesVarBs)} tooltip={row.explain?.interestVarBs} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.amortBs)} tooltip={row.explain?.amortBs} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.amortBaseBs)} tooltip={row.explain?.amortBaseBs} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.amortVarBs)} tooltip={row.explain?.amortVarBs} /></td>
-                            <td className="px-3 py-2">
-                              <Link href={`/creditos/${loan.id}/detalle/${row.index}`} className="font-semibold text-primary underline">
-                                <Hint value={formatMoneyWithUnit(row.cuotaBs)} tooltip={row.explain?.cuotaBs} />
-                              </Link>
-                            </td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.balanceBs)} tooltip={row.explain?.saldoBs} /></td>
-                            <td className="px-3 py-2">
-                              <Input
-                                type="date"
-                                className="h-8 w-[140px]"
-                                value={loan.payments[paymentIndex]?.paymentDate || row.dueDate?.slice(0, 10)}
-                                onChange={(e) => handlePaymentChange(paymentIndex, "paymentDate", e.target.value)}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                className="h-8 w-[120px]"
-                                value={loan.payments[paymentIndex]?.paymentAmount ?? row.paymentAmount}
-                                onChange={(e) => handlePaymentChange(paymentIndex, "paymentAmount", Number(e.target.value))}
-                              />
-                            </td>
-                            <td className="px-3 py-2">{formatMoneyWithUnit(row.paidPrincipalBs || 0)}</td>
-                            <td className="px-3 py-2">{formatUvcWithUnit(row.paidPrincipalUvc || 0)}</td>
-                            <td className="px-3 py-2">
-                              <Badge variant={row.paidEarly ? "success" : "muted"}>{row.paidEarly ? "Si" : "No"}</Badge>
-                            </td>
-                            <td className="px-3 py-2"><Hint value={row.daysLate} tooltip={row.explain?.daysLate} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.moraBs)} tooltip={row.explain?.moraBs} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.activeMora)} tooltip={row.explain?.activeMora} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.activeConv)} tooltip={row.explain?.activeConv} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.orderMora)} tooltip={row.explain?.orderMora} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.orderConv)} tooltip={row.explain?.orderConv} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.moratorio143)} tooltip={row.explain?.moratorio143} /></td>
-                            <td className="px-3 py-2"><Hint value={formatMoneyWithUnit(row.moratorio819)} tooltip={row.explain?.moratorio819} /></td>
-                            <td className="px-3 py-2">{formatMoneyWithUnit(row.valorPaidUvcCapital || 0)}</td>
-                            <td className="px-3 py-2">{formatMoneyWithUnit(row.valorPaidUvcRend || 0)}</td>
-                            <td className="px-3 py-2">{row.status}</td>
-                            <td className="px-3 py-2"><Hint value={formatUvcWithUnit(row.balanceUvc)} tooltip={row.explain?.balanceUvc} /></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <CardTitle>Tabla de simulacion</CardTitle>
+                      <CardDescription>Cuotas, pagos y valorizacion por grupo. Clic en cuota Bs para detalle diario.</CardDescription>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => setCompact((v) => !v)}
+                        className="rounded-lg border border-border bg-secondary/60 px-3 py-1.5 text-xs font-medium hover:bg-secondary transition-colors"
+                      >
+                        {compact ? "Normal" : "Compacto"}
+                      </button>
+                      <button
+                        onClick={() => setSidebarOpen((v) => !v)}
+                        className="rounded-lg border border-border bg-secondary/60 px-3 py-1.5 text-xs font-medium hover:bg-secondary transition-colors"
+                      >
+                        {sidebarOpen ? "⟵ Ocultar panel" : "⟶ Mostrar panel"}
+                      </button>
+                      {loan.result?.schedule?.length > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => exportScheduleToCSV(loan.result.schedule, loan.name || loan.id?.slice(0, 8))}
+                        >
+                          Exportar CSV
+                        </Button>
+                      )}
+                    </div>
                   </div>
+                </CardHeader>
+                <CardContent className={compact ? "compact" : ""}>
+                  {!loan.result ? (
+                    <div className="rounded-xl border border-dashed border-border py-14 text-center text-muted-foreground">
+                      <p className="text-4xl mb-3">📊</p>
+                      <p className="font-semibold">Sin simulacion</p>
+                      <p className="text-xs mt-1">Presiona "Calcular" para generar el cronograma de pagos.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-auto rounded-xl border border-border bg-card" style={{ maxHeight: "72vh" }}>
+                      <table className="schedule-table min-w-[1760px] text-xs">
+                        <thead>
+                          {/* ── Color group header row ── */}
+                          <tr className="group-row">
+                            <th colSpan={3}  className="group-info">—</th>
+                            <th colSpan={4}  className="group-uvc">UVC</th>
+                            <th colSpan={2}  className="group-idi">IDI</th>
+                            <th colSpan={8}  className="group-bs">Bolivares</th>
+                            <th colSpan={5}  className="group-pagos">Pagos</th>
+                            <th colSpan={2}  className="group-mora">Mora</th>
+                            <th colSpan={2}  className="group-activos">Activos</th>
+                            <th colSpan={2}  className="group-orden">Orden</th>
+                            <th colSpan={2}  className="group-moratorio">Moratorio</th>
+                            <th colSpan={2}  className="group-valor">Valorizacion</th>
+                            <th colSpan={2}  className="group-estado">Estado</th>
+                          </tr>
+                          {/* ── Column headers ── */}
+                          <tr>
+                            {["#","Vencimiento","Dias",
+                              "Saldo UVC","Interes UVC","Amort UVC","Cuota UVC",
+                              "IDI texto","IDI venc",
+                              "Interes Bs","Int Base","Int Var","Amort Bs","Amort Base","Amort Var","Cuota Bs","Saldo Bs",
+                              "Pago fecha","Pago Bs","Pago cap Bs","Pago cap UVC","Adelant.",
+                              "Dias mora","Mora Bs",
+                              "Mora act","Conv act",
+                              "Mora ord","Conv ord",
+                              "Morat 143","Morat 819",
+                              "Val cap","Val rend",
+                              "Estado","Saldo UVC fin",
+                            ].map((h) => <th key={h}>{h}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {loan.result.schedule.map((row, paymentIndex) => (
+                            <tr key={row.index}>
+                              <td className="font-semibold">{row.index}</td>
+                              <td>{row.dueDate?.slice(0, 10)}</td>
+                              <td>{row.daysPeriod}</td>
+                              <td><Hint value={fmtUvcUnit(row.startBalanceUvc)} tooltip={row.explain?.startBalanceUvc} /></td>
+                              <td><Hint value={fmtUvcUnit(row.interestUvc)} tooltip={row.explain?.interestUvc} /></td>
+                              <td><Hint value={fmtUvcUnit(row.amortUvc)} tooltip={row.explain?.amortUvc} /></td>
+                              <td><Hint value={fmtUvcUnit(row.paymentUvc)} tooltip={row.explain?.paymentUvc} /></td>
+                              <td className="max-w-[90px] truncate"><Hint value={row.idiTextDue || "—"} tooltip={row.explain?.idiDue} /></td>
+                              <td><Hint value={fmtUvc(row.idiDue)} tooltip={row.explain?.idiDue} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.interestBs)} tooltip={row.explain?.interestBs} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.interesBaseBs)} tooltip={row.explain?.interestBaseBs} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.interesVarBs)} tooltip={row.explain?.interestVarBs} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.amortBs)} tooltip={row.explain?.amortBs} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.amortBaseBs)} tooltip={row.explain?.amortBaseBs} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.amortVarBs)} tooltip={row.explain?.amortVarBs} /></td>
+                              <td>
+                                <Link href={`/creditos/${loan.id}/detalle/${row.index}`} className="font-semibold text-primary underline underline-offset-2">
+                                  <Hint value={fmtMoneyUnit(row.cuotaBs)} tooltip={row.explain?.cuotaBs} />
+                                </Link>
+                              </td>
+                              <td><Hint value={fmtMoneyUnit(row.balanceBs)} tooltip={row.explain?.saldoBs} /></td>
+                              <td>
+                                <input type="date"
+                                  value={loan.payments[paymentIndex]?.paymentDate || row.dueDate?.slice(0, 10)}
+                                  onChange={(e) => handlePaymentChange(paymentIndex, "paymentDate", e.target.value)} />
+                              </td>
+                              <td>
+                                <input type="number" step="0.01"
+                                  value={loan.payments[paymentIndex]?.paymentAmount ?? row.paymentAmount}
+                                  onChange={(e) => handlePaymentChange(paymentIndex, "paymentAmount", Number(e.target.value))} />
+                              </td>
+                              <td>{fmtMoneyUnit(row.paidPrincipalBs || 0)}</td>
+                              <td>{fmtUvcUnit(row.paidPrincipalUvc || 0)}</td>
+                              <td>
+                                <Badge variant={row.paidEarly ? "success" : "muted"}>{row.paidEarly ? "Si" : "No"}</Badge>
+                              </td>
+                              <td><Hint value={row.daysLate} tooltip={row.explain?.daysLate} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.moraBs)} tooltip={row.explain?.moraBs} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.activeMora)} tooltip={row.explain?.activeMora} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.activeConv)} tooltip={row.explain?.activeConv} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.orderMora)} tooltip={row.explain?.orderMora} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.orderConv)} tooltip={row.explain?.orderConv} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.moratorio143)} tooltip={row.explain?.moratorio143} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.moratorio819)} tooltip={row.explain?.moratorio819} /></td>
+                              <td>{fmtMoneyUnit(row.valorPaidUvcCapital || 0)}</td>
+                              <td>{fmtMoneyUnit(row.valorPaidUvcRend || 0)}</td>
+                              <td>{row.status}</td>
+                              <td><Hint value={fmtUvcUnit(row.balanceUvc)} tooltip={row.explain?.balanceUvc} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* GRAFICOS TAB */}
+            <TabsContent value="graficos" className="space-y-4">
+              {!loan.result ? (
+                <Card className="glass">
+                  <CardContent className="py-14 text-center text-muted-foreground">
+                    <p className="text-3xl mb-2">📈</p>
+                    <p className="font-semibold">Sin datos</p>
+                    <p className="text-xs mt-1">Ejecuta la simulacion primero para ver los graficos.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  <Card className="glass">
+                    <CardHeader>
+                      <CardTitle>Saldo UVC en el tiempo</CardTitle>
+                      <CardDescription>Evolucion del saldo en Unidades de Valor Constante por cuota.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <BalanceChart schedule={loan.result.schedule} />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="glass">
+                    <CardHeader>
+                      <CardTitle>Composicion de cuotas (Bs)</CardTitle>
+                      <CardDescription>Desglose de capital, interes y mora por cada cuota.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <PaymentCompositionChart schedule={loan.result.schedule} />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="glass">
+                    <CardHeader>
+                      <CardTitle>Estadisticas generales</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+                        {[
+                          { label: "TIR anual", value: summary.annualIrr != null ? `${fmtPct(summary.annualIrr * 100)} %` : "—" },
+                          { label: "TIR mensual", value: summary.annualIrr != null ? `${fmtPct((Math.pow(1 + summary.annualIrr, 1 / 12) - 1) * 100)} %` : "—" },
+                          { label: "Cuota UVC fija", value: fmtUvcUnit(summary.paymentUvc) },
+                          { label: "Cuota Bs promedio", value: fmtMoneyUnit(summary.avgCuota) },
+                          { label: "Total interes Bs", value: fmtMoneyUnit(summary.totalInterest) },
+                          { label: "Total mora Bs", value: fmtMoneyUnit(summary.totalMora) },
+                          { label: "Neto recibido", value: fmtMoneyUnit(summary.netReceived) },
+                          { label: "Saldo pendiente", value: fmtMoneyUnit(summary.totalOutstanding) },
+                          {
+                            label: "Ratio interes/capital",
+                            value: loan.params.principal
+                              ? `${fmtPct((summary.totalInterest / loan.params.principal) * 100)} %`
+                              : "—",
+                          },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="rounded-xl border border-border bg-secondary/40 px-4 py-3">
+                            <p className="text-xs text-muted-foreground">{label}</p>
+                            <p className="mt-1 font-semibold">{value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </TabsContent>
+
+            {/* ASIENTOS TAB */}
             <TabsContent value="asientos">
               <Card className="glass">
                 <CardHeader>
-                  <CardTitle>Asientos contables</CardTitle>
-                  <CardDescription>Generados por la simulacion actual.</CardDescription>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <CardTitle>Asientos contables</CardTitle>
+                      <CardDescription>Generados por la simulacion actual.</CardDescription>
+                    </div>
+                    {ledgerRows.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => exportLedgerToCSV(ledgerRows, loan.name || loan.id?.slice(0, 8))}
+                      >
+                        Exportar CSV
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto rounded-2xl border border-border bg-white">
+                  <div className="overflow-x-auto rounded-2xl border border-border bg-card">
                     <table className="min-w-[900px] text-sm">
                       <thead className="bg-secondary text-left text-xs uppercase tracking-wider text-muted-foreground">
                         <tr>
-                          <th className="px-3 py-2">Fecha</th>
-                          <th className="px-3 py-2">Descripcion</th>
-                          <th className="px-3 py-2">Cuenta</th>
-                          <th className="px-3 py-2">Debe</th>
-                          <th className="px-3 py-2">Haber</th>
-                          <th className="px-3 py-2">Total Debe</th>
-                          <th className="px-3 py-2">Total Haber</th>
+                          {["Fecha","Descripcion","Cuenta","Debe","Haber","Total Debe","Total Haber"].map((h) => (
+                            <th key={h} className="px-3 py-2">{h}</th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {ledgerRows.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-3 py-6 text-center text-sm text-muted-foreground">
+                            <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
                               Ejecuta la simulacion para generar los asientos.
                             </td>
                           </tr>
@@ -686,10 +856,10 @@ export default function LoanPage() {
                               <td className="px-3 py-2">{r.entryDate}</td>
                               <td className="px-3 py-2">{r.entryDescription}</td>
                               <td className="px-3 py-2">{r.account}</td>
-                              <td className="px-3 py-2">{r.debit ? formatMoneyWithUnit(r.debit) : ""}</td>
-                              <td className="px-3 py-2">{r.credit ? formatMoneyWithUnit(r.credit) : ""}</td>
-                              <td className="px-3 py-2">{formatMoneyWithUnit(r.totalDebit)}</td>
-                              <td className="px-3 py-2">{formatMoneyWithUnit(r.totalCredit)}</td>
+                              <td className="px-3 py-2">{r.debit ? fmtMoneyUnit(r.debit) : ""}</td>
+                              <td className="px-3 py-2">{r.credit ? fmtMoneyUnit(r.credit) : ""}</td>
+                              <td className="px-3 py-2">{fmtMoneyUnit(r.totalDebit)}</td>
+                              <td className="px-3 py-2">{fmtMoneyUnit(r.totalCredit)}</td>
                             </tr>
                           ))
                         )}

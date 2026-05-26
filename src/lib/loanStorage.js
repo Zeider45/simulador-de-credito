@@ -55,6 +55,7 @@ export function createLoanRecord(overrides = {}) {
   const now = new Date().toISOString();
   return {
     id: createId(),
+    name: "",
     params: { ...initialParams },
     accountsText: DEFAULT_ACCOUNTS,
     payments: [],
@@ -62,6 +63,20 @@ export function createLoanRecord(overrides = {}) {
     createdAt: now,
     updatedAt: now,
     ...overrides,
+  };
+}
+
+export function duplicateLoanRecord(source) {
+  const now = new Date().toISOString();
+  return {
+    id: createId(),
+    name: source.name ? `${source.name} (copia)` : "",
+    params: { ...(source.params || initialParams) },
+    accountsText: source.accountsText || DEFAULT_ACCOUNTS,
+    payments: [],
+    result: null,
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
