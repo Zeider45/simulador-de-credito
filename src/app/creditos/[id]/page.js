@@ -245,10 +245,48 @@ export default function LoanPage() {
     setError("");
     try {
       const data = await fetchSimulation(loan.params, applyPayments ? loan.payments : [], loan.accountsText);
-      persistLoan({
-        ...loan,
-        result: data,
-      });
+      persistLoan({ ...loan, result: data });
+    } catch (err) {
+      setError(err.message || "No se pudo simular");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePay = async (index, row) => {
+    if (!loan) return;
+    const nextPayments = [...loan.payments];
+    const paymentDate = nextPayments[index]?.paymentDate || row.dueDate?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+    nextPayments[index] = {
+      ...nextPayments[index],
+      paymentDate,
+      paymentAmount: (row.cuotaBs || 0) + (row.moraBs || 0),
+    };
+    const updatedLoan = { ...loan, payments: nextPayments };
+    persistLoan(updatedLoan);
+    setLoading(true);
+    setError("");
+    try {
+      const data = await fetchSimulation(updatedLoan.params, nextPayments, updatedLoan.accountsText);
+      persistLoan({ ...updatedLoan, result: data });
+    } catch (err) {
+      setError(err.message || "No se pudo simular");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearPayment = async (index) => {
+    if (!loan) return;
+    const nextPayments = [...loan.payments];
+    nextPayments[index] = { ...nextPayments[index], paymentAmount: null, paymentDate: null };
+    const updatedLoan = { ...loan, payments: nextPayments };
+    persistLoan(updatedLoan);
+    setLoading(true);
+    setError("");
+    try {
+      const data = await fetchSimulation(updatedLoan.params, nextPayments, updatedLoan.accountsText);
+      persistLoan({ ...updatedLoan, result: data });
     } catch (err) {
       setError(err.message || "No se pudo simular");
     } finally {
@@ -663,10 +701,25 @@ export default function LoanPage() {
                     <span className="rounded-sm bg-lime-600 px-2 py-1 text-white">Valorizacion</span>
                     <span className="rounded-sm bg-gray-700 px-2 py-1 text-white">Estado</span>
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Corte actual: {loan.params.simulationDays || 0} dias desde desembolso
-                    {loan.result?.summary?.asOfDate ? ` · fecha ${loan.result.summary.asOfDate}` : ""}
-                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Dias a simular:</label>
+                      <input
+                        type="number"
+                        step="1"
+                        min="0"
+                        className="w-20 rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        value={loan.params.simulationDays || 0}
+                        onChange={(e) => persistLoan({ ...loan, params: { ...loan.params, simulationDays: e.target.value } })}
+                      />
+                    </div>
+                    {loan.result?.summary?.asOfDate && (
+                      <span className="text-xs text-muted-foreground">
+                        Fecha corte: <span className="font-semibold text-foreground">{loan.result.summary.asOfDate}</span>
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground italic">Cambia el valor y presiona Calcular para actualizar.</span>
+                  </div>
                 </CardHeader>
                 <CardContent className={compact ? "compact" : ""}>
                   {!loan.result ? (
@@ -741,32 +794,46 @@ export default function LoanPage() {
                               </td>
                               <td><Hint value={fmtMoneyUnit(row.balanceBs)} tooltip={row.explain?.saldoBs} /></td>
                               <td>
-                                <div className="space-y-1">
-                                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                                    Debe pagarse: {row.dueDate?.slice(0, 10)}
-                                  </p>
-                                  <input
-                                    type="date"
-                                    className="w-full rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={currentPayment.paymentDate || row.dueDate?.slice(0, 10) || ""}
-                                    disabled={paymentLocked}
-                                    onChange={(e) => handlePaymentChange(paymentIndex, "paymentDate", e.target.value)}
-                                  />
+                                <div className="space-y-1 min-w-[130px]">
+                                  {currentPayment.paymentAmount != null ? (
+                                    <>
+                                      <Badge variant="success" className="text-[10px]">Pagado</Badge>
+                                      <p className="text-[10px] text-muted-foreground">{currentPayment.paymentDate}</p>
+                                      <button
+                                        onClick={() => handleClearPayment(paymentIndex)}
+                                        disabled={loading}
+                                        className="text-[10px] text-rose-500 hover:underline disabled:opacity-50"
+                                      >
+                                        Limpiar
+                                      </button>
+                                    </>
+                                  ) : !paymentLocked ? (
+                                    <>
+                                      <input
+                                        type="date"
+                                        className="w-full rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground"
+                                        value={currentPayment.paymentDate || row.dueDate?.slice(0, 10) || ""}
+                                        onChange={(e) => handlePaymentChange(paymentIndex, "paymentDate", e.target.value)}
+                                      />
+                                      <button
+                                        onClick={() => handlePay(paymentIndex, row)}
+                                        disabled={loading}
+                                        className="w-full rounded-lg bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                      >
+                                        {loading ? "..." : "Pagar"}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
                                 </div>
                               </td>
                               <td>
-                                <div className="space-y-1">
-                                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                                    Total esperado: {fmtMoneyUnit((row.cuotaBs || 0) + (row.moraBs || 0))}
-                                  </p>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    className="w-full rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={currentPayment.paymentAmount ?? ((row.cuotaBs || 0) + (row.moraBs || 0))}
-                                    disabled={paymentLocked}
-                                    onChange={(e) => handlePaymentChange(paymentIndex, "paymentAmount", e.target.value)}
-                                  />
+                                <div className="space-y-0.5 text-right min-w-[90px]">
+                                  <p className="text-xs font-semibold">{fmtMoneyUnit((row.cuotaBs || 0) + (row.moraBs || 0))}</p>
+                                  {(row.moraBs || 0) > 0 && (
+                                    <p className="text-[10px] text-rose-500">mora: {fmtMoneyUnit(row.moraBs)}</p>
+                                  )}
                                 </div>
                               </td>
                               <td>{fmtMoneyUnit(row.paidPrincipalBs || 0)}</td>
