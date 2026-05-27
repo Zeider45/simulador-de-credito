@@ -757,13 +757,13 @@ export default function LoanPage() {
                               <td>
                                 <div className="space-y-1">
                                   <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                                    Monto esperado: {fmtMoneyUnit(row.dueAmount || row.paymentAmount)}
+                                    Total esperado: {fmtMoneyUnit((row.cuotaBs || 0) + (row.moraBs || 0))}
                                   </p>
                                   <input
                                     type="number"
                                     step="0.01"
                                     className="w-full rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={currentPayment.paymentAmount ?? ""}
+                                    value={currentPayment.paymentAmount ?? ((row.cuotaBs || 0) + (row.moraBs || 0))}
                                     disabled={paymentLocked}
                                     onChange={(e) => handlePaymentChange(paymentIndex, "paymentAmount", e.target.value)}
                                   />
