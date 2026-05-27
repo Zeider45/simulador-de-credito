@@ -765,7 +765,8 @@ export function simulateLoan(input) {
     let cumMoraUvc = 0;
     let cumMoraBs = 0;
     const dailyRateFactor = params.annualRate / dayCountBase; // per-day fraction of annual rate (uses 360/365 denominator)
-    const detailEndDate = hasValidPayment ? paymentDate : (asOfDate || dueDate);
+    const effectiveAsOf = asOfDate && asOfDate > periodStart ? asOfDate : null;
+    const detailEndDate = hasValidPayment ? paymentDate : (effectiveAsOf || dueDate);
     const cursor = new Date(periodStart.getTime());
     cursor.setUTCDate(cursor.getUTCDate() + 1);
     let cumInterestUvc = 0;
