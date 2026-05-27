@@ -196,10 +196,6 @@ export default function LoanPage() {
   }, [loan?.id]);
 
   const ledgerRows = useMemo(() => buildLedgerRows(loan?.result), [loan?.result]);
-  const simulationCutoffDate = useMemo(() => {
-    const asOf = loan?.result?.summary?.asOfDate;
-    return asOf ? new Date(`${asOf}T00:00:00.000Z`) : null;
-  }, [loan?.result?.summary?.asOfDate]);
   const selectClass = "h-10 w-full rounded-xl border border-border bg-card text-foreground px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
   const persistLoan = (nextLoan) => {
@@ -765,10 +761,7 @@ export default function LoanPage() {
                         <tbody>
                           {loan.result.schedule.map((row, paymentIndex) => {
                             const currentPayment = loan.payments[paymentIndex] || {};
-                            const rowDueDate = row.dueDate ? new Date(`${row.dueDate.slice(0, 10)}T00:00:00.000Z`) : null;
-                            const previousPaid = paymentIndex === 0 || Number(loan.payments[paymentIndex - 1]?.paymentAmount || 0) > 0;
-                            const canEditPayment = !simulationCutoffDate || !rowDueDate || rowDueDate <= simulationCutoffDate;
-                            const paymentLocked = !(previousPaid && canEditPayment);
+                            const alreadyPaid = currentPayment.paymentAmount != null;
 
                             return (
                             <tr key={row.index}>
@@ -795,7 +788,7 @@ export default function LoanPage() {
                               <td><Hint value={fmtMoneyUnit(row.balanceBs)} tooltip={row.explain?.saldoBs} /></td>
                               <td>
                                 <div className="space-y-1 min-w-[130px]">
-                                  {currentPayment.paymentAmount != null ? (
+                                  {alreadyPaid ? (
                                     <>
                                       <Badge variant="success" className="text-[10px]">Pagado</Badge>
                                       <p className="text-[10px] text-muted-foreground">{currentPayment.paymentDate}</p>
@@ -807,7 +800,7 @@ export default function LoanPage() {
                                         Limpiar
                                       </button>
                                     </>
-                                  ) : !paymentLocked ? (
+                                  ) : (
                                     <>
                                       <input
                                         type="date"
@@ -823,8 +816,6 @@ export default function LoanPage() {
                                         {loading ? "..." : "Pagar"}
                                       </button>
                                     </>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">—</span>
                                   )}
                                 </div>
                               </td>
