@@ -40,6 +40,38 @@ function fmtPct(v) { return pctFmt.format(v || 0); }
 function fmtMoneyUnit(v) { return `${fmtMoney(v)} Bs`; }
 function fmtUvcUnit(v) { return `${fmtUvc(v)} UVC`; }
 
+// Descripciones de cada columna de la tabla de simulacion. Se muestran como
+// tooltip al hacer hover sobre el encabezado correspondiente.
+const COLUMN_DESCRIPTIONS = {
+  "#": "Numero de cuota dentro del cronograma de pagos.",
+  "Vencimiento": "Fecha de vencimiento pactada de la cuota.",
+  "Dias": "Dias del periodo segun la base de calculo (30/360 o actual/365).",
+  "Saldo UVC": "Saldo de capital en UVC al inicio del periodo (saldo del periodo anterior).",
+  "Interes UVC": "Interes del periodo en UVC = Saldo UVC x tasa anual x dias/base.",
+  "Amort UVC": "Amortizacion de capital en UVC = Cuota UVC - Interes UVC.",
+  "Cuota UVC": "Cuota fija en UVC = P x (i / (1 - (1+i)^-n)).",
+  "IDI texto": "Valor del IDI (tal cual publicado) usado para valorizar al vencimiento.",
+  "IDI venc": "Indice de Valor (IDI) a la fecha de vencimiento.",
+  "Interes Bs": "Interes del periodo en bolivares (Interes UVC valorizado por IDI).",
+  "Amort Bs": "Amortizacion de capital en bolivares = Amort UVC x IDI vencimiento.",
+  "Cuota Bs": "Cuota total en bolivares = Interes Bs + Amort Bs. Clic para ver el detalle diario.",
+  "Saldo Bs": "Saldo de capital en bolivares = Saldo UVC final x IDI vencimiento.",
+  "Pago fecha": "Fecha en que se registra el pago de la cuota.",
+  "Pago Bs": "Monto total a pagar (cuota Bs + mora si aplica).",
+  "Pago cap Bs": "Capital efectivamente pagado en bolivares.",
+  "Dias mora": "Dias de atraso = max(0, dias entre vencimiento y pago - dias de gracia).",
+  "Mora Bs": "Interes moratorio = Base mora x tasa mora x dias/base x IDI.",
+  "Mora act": "Rendimiento de mora vigente (cuando la mora <= Mora 2).",
+  "Conv act": "Rendimiento convencional vigente: interes corriente cuando la mora <= Mora 2.",
+  "Mora ord": "Rendimiento de mora en cuentas de orden (cuando la mora > Mora 2).",
+  "Conv ord": "Rendimiento convencional en cuentas de orden (cuando la mora > Mora 2).",
+  "Morat 143": "Moratorio 143 (vigente) = mora + rendimiento clasificados como activos.",
+  "Morat 819": "Moratorio 819 (orden) = mora + rendimiento clasificados en cuentas de orden.",
+  "Val UVC cap": "Valorizacion del capital pagado = Pago capital Bs - capital UVC x IDI desembolso.",
+  "Val UVC rend": "Valorizacion del rendimiento pagado = interes pagado - interes UVC x IDI desembolso.",
+  "Estado": "Clasificacion segun dias de mora (AL DIA, MORA 1, VENCIDO, VENCIDO 2, CASTIGO).",
+};
+
 function Hint({ value, tooltip }) {
   if (!tooltip) return <span>{value}</span>;
   return (
@@ -777,7 +809,11 @@ export default function LoanPage() {
                               "Morat 143","Morat 819",
                               "Val UVC cap","Val UVC rend",
                               "Estado",
-                            ].map((h) => <th key={h}>{h}</th>)}
+                            ].map((h) => (
+                              <th key={h} title={COLUMN_DESCRIPTIONS[h] || h} className="cursor-help">
+                                <span className="underline decoration-dotted decoration-muted-foreground/50 underline-offset-2">{h}</span>
+                              </th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
