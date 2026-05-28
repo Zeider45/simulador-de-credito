@@ -625,10 +625,9 @@ export function simulateLoan(input) {
     const rawPrincipalPaidUvc = (paidPrincipal + paidExtra) / idiPay;
     const principalPaidUvc = Math.min(startBalanceUvc, rawPrincipalPaidUvc);
     const paidPrincipalBs = paidPrincipal + paidExtra;
-    const paidInterestBs = paidInterest;
-    const paidInterestUvc = params.creditUvc ? paidInterestBs / idiPay : paidInterestBs;
+    const paidInterestUvc = params.creditUvc ? paidInterest / idiPay : paidInterest;
     const valorPaidUvcCapital = params.creditUvc ? paidPrincipalBs - principalPaidUvc * baseIdi : 0;
-    const valorPaidUvcRend = params.creditUvc ? paidInterestBs - paidInterestUvc * baseIdi : 0;
+    const valorPaidUvcRend = params.creditUvc ? paidInterest - paidInterestUvc * baseIdi : 0;
 
     const paidEarly = hasValidPayment ? paymentDate.getTime() < dueDate.getTime() : false;
 
@@ -921,7 +920,6 @@ export function simulateLoan(input) {
       cuotaBs: interestBs + amortBs,
       paymentDate,
       paymentAmount,
-      paymentApplied: paymentAmount,
       daysLate,
       moraBs,
       activeMora,
@@ -932,15 +930,12 @@ export function simulateLoan(input) {
       moratorio819,
       valorUvcCapital,
       valorUvcRend,
-      nroDias: daysPeriod,
       status: classifyDays(daysLate, params.mora1, params.mora2, params.mora3),
       balanceUvc,
       balanceBs,
       paidEarly,
       paidPrincipalBs: Number(paidPrincipalBs ? paidPrincipalBs.toFixed(2) : 0),
       paidPrincipalUvc: Number(principalPaidUvc ? principalPaidUvc.toFixed(6) : 0),
-      paidInterestBs: Number(paidInterestBs ? paidInterestBs.toFixed(2) : 0),
-      paidInterestUvc: Number(paidInterestUvc ? paidInterestUvc.toFixed(6) : 0),
       valorPaidUvcCapital: Number(valorPaidUvcCapital ? valorPaidUvcCapital.toFixed(6) : 0),
       valorPaidUvcRend: Number(valorPaidUvcRend ? valorPaidUvcRend.toFixed(6) : 0),
       paidMora,

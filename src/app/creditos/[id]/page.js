@@ -748,35 +748,35 @@ export default function LoanPage() {
                     </div>
                   ) : (
                     <div className="overflow-auto rounded-xl border border-border bg-card" style={{ maxHeight: "72vh" }}>
-                      <table className="schedule-table min-w-[1760px] text-xs">
+                      <table className="schedule-table min-w-[1380px] text-xs">
                         <thead>
                           {/* ── Color group header row ── */}
                           <tr className="group-row">
                             <th colSpan={3}  className="group-info">—</th>
                             <th colSpan={4}  className="group-uvc">UVC</th>
                             <th colSpan={2}  className="group-idi">IDI</th>
-                            <th colSpan={8}  className="group-bs">Bolivares</th>
-                            <th colSpan={5}  className="group-pagos">Pagos</th>
+                            <th colSpan={4}  className="group-bs">Bolivares</th>
+                            <th colSpan={3}  className="group-pagos">Pagos</th>
                             <th colSpan={2}  className="group-mora">Mora</th>
                             <th colSpan={2}  className="group-activos">Activos</th>
                             <th colSpan={2}  className="group-orden">Orden</th>
                             <th colSpan={2}  className="group-moratorio">Moratorio</th>
                             <th colSpan={2}  className="group-valor">Valorizacion UVC</th>
-                            <th colSpan={2}  className="group-estado">Estado</th>
+                            <th colSpan={1}  className="group-estado">Estado</th>
                           </tr>
                           {/* ── Column headers ── */}
                           <tr>
                             {["#","Vencimiento","Dias",
                               "Saldo UVC","Interes UVC","Amort UVC","Cuota UVC",
                               "IDI texto","IDI venc",
-                              "Interes Bs","Int Base","Int Var","Amort Bs","Amort Base","Amort Var","Cuota Bs","Saldo Bs",
-                              "Pago fecha","Pago Bs","Pago cap Bs","Pago cap UVC","Adelant.",
+                              "Interes Bs","Amort Bs","Cuota Bs","Saldo Bs",
+                              "Pago fecha","Pago Bs","Pago cap Bs",
                               "Dias mora","Mora Bs",
                               "Mora act","Conv act",
                               "Mora ord","Conv ord",
                               "Morat 143","Morat 819",
                               "Val UVC cap","Val UVC rend",
-                              "Estado","Saldo UVC fin",
+                              "Estado",
                             ].map((h) => <th key={h}>{h}</th>)}
                           </tr>
                         </thead>
@@ -798,11 +798,7 @@ export default function LoanPage() {
                               <td className="max-w-[90px] truncate"><Hint value={row.idiTextDue || "—"} tooltip={row.explain?.idiDue} /></td>
                               <td><Hint value={fmtUvc(row.idiDue)} tooltip={row.explain?.idiDue} /></td>
                               <td><Hint value={fmtMoneyUnit(row.interestBs)} tooltip={row.explain?.interestBs} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.interesBaseBs)} tooltip={row.explain?.interestBaseBs} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.interesVarBs)} tooltip={row.explain?.interestVarBs} /></td>
                               <td><Hint value={fmtMoneyUnit(row.amortBs)} tooltip={row.explain?.amortBs} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.amortBaseBs)} tooltip={row.explain?.amortBaseBs} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.amortVarBs)} tooltip={row.explain?.amortVarBs} /></td>
                               <td>
                                 <Link href={`/creditos/${loan.id}/detalle/${row.index}`} className="font-semibold text-primary underline underline-offset-2">
                                   <Hint value={fmtMoneyUnit(row.cuotaBs)} tooltip={row.explain?.cuotaBs} />
@@ -862,10 +858,6 @@ export default function LoanPage() {
                                 </div>
                               </td>
                               <td>{fmtMoneyUnit(row.paidPrincipalBs || 0)}</td>
-                              <td>{fmtUvcUnit(row.paidPrincipalUvc || 0)}</td>
-                              <td>
-                                <Badge variant={row.paidEarly ? "success" : "muted"}>{row.paidEarly ? "Si" : "No"}</Badge>
-                              </td>
                               <td><Hint value={row.daysLate} tooltip={row.explain?.daysLate} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moraBs)} tooltip={row.explain?.moraBs} /></td>
                               <td><Hint value={fmtMoneyUnit(row.activeMora)} tooltip={row.explain?.activeMora} /></td>
@@ -877,7 +869,6 @@ export default function LoanPage() {
                               <td><Hint value={fmtMoneyUnit(row.valorUvcCapital || 0)} tooltip={row.explain?.valorUvcCapital} /></td>
                               <td><Hint value={fmtMoneyUnit(row.valorUvcRend || 0)} tooltip={row.explain?.valorUvcRend} /></td>
                               <td>{row.status}</td>
-                              <td><Hint value={fmtUvcUnit(row.balanceUvc)} tooltip={row.explain?.balanceUvc} /></td>
                             </tr>
                           ); })}
                         </tbody>
