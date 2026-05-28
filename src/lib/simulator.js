@@ -591,7 +591,7 @@ export function simulateLoan(input) {
       const moraUvc = moraBaseUvc * params.moraRate * (daysLate / dayCountBase);
       moraBs = params.creditUvc
         ? params.interestValuation === "idi_daily"
-          ? uvcToBsDaily(moraUvc, dueDate, paymentDate, daysLate, idiForDate)
+          ? uvcToBsDaily(moraUvc, addDays(dueDate, params.graceDays), paymentDate, daysLate, idiForDate)
           : moraUvc * idiForDate(paymentDate)
         : moraUvc;
     }
@@ -820,7 +820,7 @@ export function simulateLoan(input) {
       const amortBaseBsDay = isDueDay ? amortBaseBs : (isPaymentDay ? (principalPaidUvc * baseIdi) : 0);
       const amortVarBsDay = isDueDay ? amortVarBs : (isPaymentDay ? (paidPrincipalBs - principalPaidUvc * baseIdi) : 0);
       const paymentUvcDay = isDueDay ? paymentUvcAdj : (isPaymentDay ? principalPaidUvc : 0);
-      const paymentBsDay = isDueDay ? (interestBs + amortBs) : (isPaymentDay ? (paidInterestBs + paidPrincipalBs + paidMora) : 0);
+      const paymentBsDay = isDueDay ? (interestBs + amortBs) : (isPaymentDay ? (paidInterest + paidPrincipalBs + paidMora) : 0);
 
       const balanceUvcStartDay = startBalanceUvc;
       const balanceUvcEndDay = isDueDay ? Math.max(0, startBalanceUvc - amortUvc) : (isPaymentDay ? Math.max(0, startBalanceUvc - principalPaidUvc) : startBalanceUvc);
@@ -859,8 +859,7 @@ export function simulateLoan(input) {
     const moraBreakdown = [];
     let cumMoraUvc2 = 0;
     let cumMoraBs2 = 0;
-    const startMoraDate = new Date(dueDate.getTime());
-    startMoraDate.setUTCDate(startMoraDate.getUTCDate() + 1);
+    const startMoraDate = addDays(dueDate, params.graceDays + 1);
     if (params.moraRate > 0 && startMoraDate <= detailEndDate) {
       const cursor2 = new Date(startMoraDate.getTime());
       while (cursor2 <= detailEndDate) {
