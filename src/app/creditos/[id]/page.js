@@ -196,10 +196,6 @@ export default function LoanPage() {
   }, [loan?.id]);
 
   const ledgerRows = useMemo(() => buildLedgerRows(loan?.result), [loan?.result]);
-  const simulationCutoffDate = useMemo(() => {
-    const asOf = loan?.result?.summary?.asOfDate;
-    return asOf ? new Date(`${asOf}T00:00:00.000Z`) : null;
-  }, [loan?.result?.summary?.asOfDate]);
   const selectClass = "h-10 w-full rounded-xl border border-border bg-card text-foreground px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
   const persistLoan = (nextLoan) => {
@@ -245,10 +241,51 @@ export default function LoanPage() {
     setError("");
     try {
       const data = await fetchSimulation(loan.params, applyPayments ? loan.payments : [], loan.accountsText);
-      persistLoan({
-        ...loan,
-        result: data,
-      });
+      persistLoan({ ...loan, result: data });
+    } catch (err) {
+      setError(err.message || "No se pudo simular");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePay = async (index, row) => {
+    if (!loan) return;
+    const nextPayments = [...loan.payments];
+    const isSimMode = loan.params.paymentMode === "simulacion";
+    const paymentDate = isSimMode
+      ? row.dueDate?.slice(0, 10)
+      : (nextPayments[index]?.paymentDate || row.dueDate?.slice(0, 10) || new Date().toISOString().slice(0, 10));
+    nextPayments[index] = {
+      ...nextPayments[index],
+      paymentDate,
+      paymentAmount: (row.cuotaBs || 0) + (row.moraBs || 0),
+    };
+    const updatedLoan = { ...loan, payments: nextPayments };
+    persistLoan(updatedLoan);
+    setLoading(true);
+    setError("");
+    try {
+      const data = await fetchSimulation(updatedLoan.params, nextPayments, updatedLoan.accountsText);
+      persistLoan({ ...updatedLoan, result: data });
+    } catch (err) {
+      setError(err.message || "No se pudo simular");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearPayment = async (index) => {
+    if (!loan) return;
+    const nextPayments = [...loan.payments];
+    nextPayments[index] = { ...nextPayments[index], paymentAmount: null, paymentDate: null };
+    const updatedLoan = { ...loan, payments: nextPayments };
+    persistLoan(updatedLoan);
+    setLoading(true);
+    setError("");
+    try {
+      const data = await fetchSimulation(updatedLoan.params, nextPayments, updatedLoan.accountsText);
+      persistLoan({ ...updatedLoan, result: data });
     } catch (err) {
       setError(err.message || "No se pudo simular");
     } finally {
@@ -663,10 +700,44 @@ export default function LoanPage() {
                     <span className="rounded-sm bg-lime-600 px-2 py-1 text-white">Valorizacion</span>
                     <span className="rounded-sm bg-gray-700 px-2 py-1 text-white">Estado</span>
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Corte actual: {loan.params.simulationDays || 0} dias desde desembolso
-                    {loan.result?.summary?.asOfDate ? ` · fecha ${loan.result.summary.asOfDate}` : ""}
-                  </p>
+                  {/* ── Selector de modo de pago ── */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-secondary/20 px-3 py-2">
+                    <span className="text-xs font-semibold text-muted-foreground mr-2">Modo:</span>
+                    <button
+                      onClick={() => persistLoan({ ...loan, params: { ...loan.params, paymentMode: "simulacion", simulationDays: loan.params.simulationDays || 0 } })}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${loan.params.paymentMode === "simulacion" ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-secondary"}`}
+                    >
+                      Simulacion de dias transcurridos
+                    </button>
+                    <button
+                      onClick={() => persistLoan({ ...loan, params: { ...loan.params, paymentMode: "libre", simulationDays: 0 } })}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${loan.params.paymentMode !== "simulacion" ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground hover:bg-secondary"}`}
+                    >
+                      Registro libre de pagos
+                    </button>
+                    {loan.params.paymentMode === "simulacion" && (
+                      <div className="flex items-center gap-2 ml-3 border-l border-border pl-3">
+                        <label className="text-xs font-semibold text-muted-foreground whitespace-nowrap">Dias transcurridos:</label>
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          className="w-20 rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                          value={loan.params.simulationDays || 0}
+                          onChange={(e) => persistLoan({ ...loan, params: { ...loan.params, simulationDays: e.target.value } })}
+                        />
+                        {loan.result?.summary?.asOfDate && (
+                          <span className="text-xs text-muted-foreground">
+                            → <span className="font-semibold text-foreground">{loan.result.summary.asOfDate}</span>
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground italic">Presiona Calcular tras cambiar.</span>
+                      </div>
+                    )}
+                    {loan.params.paymentMode !== "simulacion" && (
+                      <span className="text-xs text-muted-foreground ml-2 italic">Elige la fecha de pago para cada cuota.</span>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className={compact ? "compact" : ""}>
                   {!loan.result ? (
@@ -677,45 +748,43 @@ export default function LoanPage() {
                     </div>
                   ) : (
                     <div className="overflow-auto rounded-xl border border-border bg-card" style={{ maxHeight: "72vh" }}>
-                      <table className="schedule-table min-w-[1760px] text-xs">
+                      <table className="schedule-table min-w-[1380px] text-xs">
                         <thead>
                           {/* ── Color group header row ── */}
                           <tr className="group-row">
                             <th colSpan={3}  className="group-info">—</th>
                             <th colSpan={4}  className="group-uvc">UVC</th>
                             <th colSpan={2}  className="group-idi">IDI</th>
-                            <th colSpan={8}  className="group-bs">Bolivares</th>
-                            <th colSpan={5}  className="group-pagos">Pagos</th>
+                            <th colSpan={4}  className="group-bs">Bolivares</th>
+                            <th colSpan={3}  className="group-pagos">Pagos</th>
                             <th colSpan={2}  className="group-mora">Mora</th>
                             <th colSpan={2}  className="group-activos">Activos</th>
                             <th colSpan={2}  className="group-orden">Orden</th>
                             <th colSpan={2}  className="group-moratorio">Moratorio</th>
-                            <th colSpan={2}  className="group-valor">Valorizacion</th>
-                            <th colSpan={2}  className="group-estado">Estado</th>
+                            <th colSpan={2}  className="group-valor">Valorizacion UVC</th>
+                            <th colSpan={1}  className="group-estado">Estado</th>
                           </tr>
                           {/* ── Column headers ── */}
                           <tr>
                             {["#","Vencimiento","Dias",
                               "Saldo UVC","Interes UVC","Amort UVC","Cuota UVC",
                               "IDI texto","IDI venc",
-                              "Interes Bs","Int Base","Int Var","Amort Bs","Amort Base","Amort Var","Cuota Bs","Saldo Bs",
-                              "Pago fecha","Pago Bs","Pago cap Bs","Pago cap UVC","Adelant.",
+                              "Interes Bs","Amort Bs","Cuota Bs","Saldo Bs",
+                              "Pago fecha","Pago Bs","Pago cap Bs",
                               "Dias mora","Mora Bs",
                               "Mora act","Conv act",
                               "Mora ord","Conv ord",
                               "Morat 143","Morat 819",
-                              "Val cap","Val rend",
-                              "Estado","Saldo UVC fin",
+                              "Val UVC cap","Val UVC rend",
+                              "Estado",
                             ].map((h) => <th key={h}>{h}</th>)}
                           </tr>
                         </thead>
                         <tbody>
                           {loan.result.schedule.map((row, paymentIndex) => {
                             const currentPayment = loan.payments[paymentIndex] || {};
-                            const rowDueDate = row.dueDate ? new Date(`${row.dueDate.slice(0, 10)}T00:00:00.000Z`) : null;
-                            const previousPaid = paymentIndex === 0 || Number(loan.payments[paymentIndex - 1]?.paymentAmount || 0) > 0;
-                            const canEditPayment = !simulationCutoffDate || !rowDueDate || rowDueDate <= simulationCutoffDate;
-                            const paymentLocked = !(previousPaid && canEditPayment);
+                            const alreadyPaid = currentPayment.paymentAmount != null;
+                            const isSimMode = loan.params.paymentMode === "simulacion";
 
                             return (
                             <tr key={row.index}>
@@ -729,11 +798,7 @@ export default function LoanPage() {
                               <td className="max-w-[90px] truncate"><Hint value={row.idiTextDue || "—"} tooltip={row.explain?.idiDue} /></td>
                               <td><Hint value={fmtUvc(row.idiDue)} tooltip={row.explain?.idiDue} /></td>
                               <td><Hint value={fmtMoneyUnit(row.interestBs)} tooltip={row.explain?.interestBs} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.interesBaseBs)} tooltip={row.explain?.interestBaseBs} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.interesVarBs)} tooltip={row.explain?.interestVarBs} /></td>
                               <td><Hint value={fmtMoneyUnit(row.amortBs)} tooltip={row.explain?.amortBs} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.amortBaseBs)} tooltip={row.explain?.amortBaseBs} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.amortVarBs)} tooltip={row.explain?.amortVarBs} /></td>
                               <td>
                                 <Link href={`/creditos/${loan.id}/detalle/${row.index}`} className="font-semibold text-primary underline underline-offset-2">
                                   <Hint value={fmtMoneyUnit(row.cuotaBs)} tooltip={row.explain?.cuotaBs} />
@@ -741,39 +806,58 @@ export default function LoanPage() {
                               </td>
                               <td><Hint value={fmtMoneyUnit(row.balanceBs)} tooltip={row.explain?.saldoBs} /></td>
                               <td>
-                                <div className="space-y-1">
-                                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                                    Debe pagarse: {row.dueDate?.slice(0, 10)}
-                                  </p>
-                                  <input
-                                    type="date"
-                                    className="w-full rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={currentPayment.paymentDate || row.dueDate?.slice(0, 10) || ""}
-                                    disabled={paymentLocked}
-                                    onChange={(e) => handlePaymentChange(paymentIndex, "paymentDate", e.target.value)}
-                                  />
+                                <div className="space-y-1 min-w-[130px]">
+                                  {alreadyPaid ? (
+                                    <>
+                                      <Badge variant="success" className="text-[10px]">Pagado</Badge>
+                                      <p className="text-[10px] text-muted-foreground">{currentPayment.paymentDate}</p>
+                                      <button
+                                        onClick={() => handleClearPayment(paymentIndex)}
+                                        disabled={loading}
+                                        className="text-[10px] text-rose-500 hover:underline disabled:opacity-50"
+                                      >
+                                        Limpiar
+                                      </button>
+                                    </>
+                                  ) : isSimMode ? (
+                                    <>
+                                      <p className="text-[10px] text-muted-foreground">Vence: <span className="font-semibold text-foreground">{row.dueDate?.slice(0, 10)}</span></p>
+                                      <button
+                                        onClick={() => handlePay(paymentIndex, row)}
+                                        disabled={loading}
+                                        className="w-full rounded-lg bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                      >
+                                        {loading ? "..." : "Pagar"}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <input
+                                        type="date"
+                                        className="w-full rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground"
+                                        value={currentPayment.paymentDate || row.dueDate?.slice(0, 10) || ""}
+                                        onChange={(e) => handlePaymentChange(paymentIndex, "paymentDate", e.target.value)}
+                                      />
+                                      <button
+                                        onClick={() => handlePay(paymentIndex, row)}
+                                        disabled={loading}
+                                        className="w-full rounded-lg bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                      >
+                                        {loading ? "..." : "Pagar"}
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </td>
                               <td>
-                                <div className="space-y-1">
-                                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                                    Monto esperado: {fmtMoneyUnit(row.dueAmount || row.paymentAmount)}
-                                  </p>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    className="w-full rounded-lg border border-border bg-card px-2 py-1 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={currentPayment.paymentAmount ?? ""}
-                                    disabled={paymentLocked}
-                                    onChange={(e) => handlePaymentChange(paymentIndex, "paymentAmount", e.target.value)}
-                                  />
+                                <div className="space-y-0.5 text-right min-w-[90px]">
+                                  <p className="text-xs font-semibold">{fmtMoneyUnit((row.cuotaBs || 0) + (row.moraBs || 0))}</p>
+                                  {(row.moraBs || 0) > 0 && (
+                                    <p className="text-[10px] text-rose-500">mora: {fmtMoneyUnit(row.moraBs)}</p>
+                                  )}
                                 </div>
                               </td>
                               <td>{fmtMoneyUnit(row.paidPrincipalBs || 0)}</td>
-                              <td>{fmtUvcUnit(row.paidPrincipalUvc || 0)}</td>
-                              <td>
-                                <Badge variant={row.paidEarly ? "success" : "muted"}>{row.paidEarly ? "Si" : "No"}</Badge>
-                              </td>
                               <td><Hint value={row.daysLate} tooltip={row.explain?.daysLate} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moraBs)} tooltip={row.explain?.moraBs} /></td>
                               <td><Hint value={fmtMoneyUnit(row.activeMora)} tooltip={row.explain?.activeMora} /></td>
@@ -782,10 +866,9 @@ export default function LoanPage() {
                               <td><Hint value={fmtMoneyUnit(row.orderConv)} tooltip={row.explain?.orderConv} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio143)} tooltip={row.explain?.moratorio143} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio819)} tooltip={row.explain?.moratorio819} /></td>
-                              <td>{fmtMoneyUnit(row.valorPaidUvcCapital || 0)}</td>
-                              <td>{fmtMoneyUnit(row.valorPaidUvcRend || 0)}</td>
+                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcCapital || 0)} tooltip={row.explain?.valorUvcCapital} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcRend || 0)} tooltip={row.explain?.valorUvcRend} /></td>
                               <td>{row.status}</td>
-                              <td><Hint value={fmtUvcUnit(row.balanceUvc)} tooltip={row.explain?.balanceUvc} /></td>
                             </tr>
                           ); })}
                         </tbody>

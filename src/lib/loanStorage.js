@@ -41,8 +41,8 @@ export const initialParams = {
   prepayAction: "reduce_term",
   idiSeriesText: DEFAULT_IDI_SERIES,
   adjustToBusinessDay: true,
-  // lista opcional de feriados (YYYY-MM-DD). Ej: ["2025-12-24","2025-12-25"]
   holidays: [],
+  paymentMode: "libre",
 };
 
 function createId() {

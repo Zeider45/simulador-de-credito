@@ -625,14 +625,17 @@ export function simulateLoan(input) {
     const rawPrincipalPaidUvc = (paidPrincipal + paidExtra) / idiPay;
     const principalPaidUvc = Math.min(startBalanceUvc, rawPrincipalPaidUvc);
     const paidPrincipalBs = paidPrincipal + paidExtra;
-    const paidInterestBs = paidInterest;
-    const paidInterestUvc = params.creditUvc ? paidInterestBs / idiPay : paidInterestBs;
+    const paidInterestUvc = params.creditUvc ? paidInterest / idiPay : paidInterest;
     const valorPaidUvcCapital = params.creditUvc ? paidPrincipalBs - principalPaidUvc * baseIdi : 0;
-    const valorPaidUvcRend = params.creditUvc ? paidInterestBs - paidInterestUvc * baseIdi : 0;
+    const valorPaidUvcRend = params.creditUvc ? paidInterest - paidInterestUvc * baseIdi : 0;
 
     const paidEarly = hasValidPayment ? paymentDate.getTime() < dueDate.getTime() : false;
 
-    balanceUvc = Math.max(0, startBalanceUvc - principalPaidUvc);
+    // Advance balance: if a payment was registered use the actual paid principal (tracks real
+    // cash flows, including partial payments and prepayments); if no payment is registered yet,
+    // advance by the scheduled amortization so the schedule shows proper French-amortization
+    // behavior (decreasing balance each period) even before any payments are entered.
+    balanceUvc = Math.max(0, startBalanceUvc - (hasValidPayment ? principalPaidUvc : amortUvc));
 
     unpaidMora = Math.max(0, unpaidMora + moraBs - paidMora);
     unpaidInterest = Math.max(0, unpaidInterest + interestBs - paidInterest);
@@ -765,7 +768,8 @@ export function simulateLoan(input) {
     let cumMoraUvc = 0;
     let cumMoraBs = 0;
     const dailyRateFactor = params.annualRate / dayCountBase; // per-day fraction of annual rate (uses 360/365 denominator)
-    const detailEndDate = hasValidPayment ? paymentDate : (asOfDate || dueDate);
+    const effectiveAsOf = asOfDate && asOfDate > periodStart ? asOfDate : null;
+    const detailEndDate = hasValidPayment ? paymentDate : (effectiveAsOf || dueDate);
     const cursor = new Date(periodStart.getTime());
     cursor.setUTCDate(cursor.getUTCDate() + 1);
     let cumInterestUvc = 0;
@@ -920,7 +924,6 @@ export function simulateLoan(input) {
       cuotaBs: interestBs + amortBs,
       paymentDate,
       paymentAmount,
-      paymentApplied: paymentAmount,
       daysLate,
       moraBs,
       activeMora,
@@ -931,15 +934,12 @@ export function simulateLoan(input) {
       moratorio819,
       valorUvcCapital,
       valorUvcRend,
-      nroDias: daysPeriod,
       status: classifyDays(daysLate, params.mora1, params.mora2, params.mora3),
       balanceUvc,
       balanceBs,
       paidEarly,
       paidPrincipalBs: Number(paidPrincipalBs ? paidPrincipalBs.toFixed(2) : 0),
       paidPrincipalUvc: Number(principalPaidUvc ? principalPaidUvc.toFixed(6) : 0),
-      paidInterestBs: Number(paidInterestBs ? paidInterestBs.toFixed(2) : 0),
-      paidInterestUvc: Number(paidInterestUvc ? paidInterestUvc.toFixed(6) : 0),
       valorPaidUvcCapital: Number(valorPaidUvcCapital ? valorPaidUvcCapital.toFixed(6) : 0),
       valorPaidUvcRend: Number(valorPaidUvcRend ? valorPaidUvcRend.toFixed(6) : 0),
       paidMora,
