@@ -631,7 +631,11 @@ export function simulateLoan(input) {
 
     const paidEarly = hasValidPayment ? paymentDate.getTime() < dueDate.getTime() : false;
 
-    balanceUvc = Math.max(0, startBalanceUvc - principalPaidUvc);
+    // Advance balance: if a payment was registered use the actual paid principal (tracks real
+    // cash flows, including partial payments and prepayments); if no payment is registered yet,
+    // advance by the scheduled amortization so the schedule shows proper French-amortization
+    // behavior (decreasing balance each period) even before any payments are entered.
+    balanceUvc = Math.max(0, startBalanceUvc - (hasValidPayment ? principalPaidUvc : amortUvc));
 
     unpaidMora = Math.max(0, unpaidMora + moraBs - paidMora);
     unpaidInterest = Math.max(0, unpaidInterest + interestBs - paidInterest);
