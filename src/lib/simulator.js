@@ -30,6 +30,24 @@ function addDays(date, days) {
   return copy;
 }
 
+function isBusinessDay(date, holidays) {
+  const dow = date.getUTCDay();
+  if (dow === 0 || dow === 6) return false;
+  if (Array.isArray(holidays) && holidays.indexOf(formatDate(date)) !== -1) return false;
+  return true;
+}
+
+// Ajusta una fecha de vencimiento al siguiente dia habil (convencion "following"),
+// saltando fines de semana y feriados configurados.
+function adjustToNextBusinessDay(date, holidays) {
+  if (!date) return date;
+  let copy = new Date(date.getTime());
+  while (!isBusinessDay(copy, holidays)) {
+    copy = addDays(copy, 1);
+  }
+  return copy;
+}
+
 function diffDaysActual(start, end) {
   return Math.round((end - start) / DAY_MS);
 }
@@ -482,6 +500,11 @@ export function simulateLoan(input) {
     idiSeriesText: input.idiSeriesText || "",
     idiFutureStep: parseNumber(input.idiFutureStep, 0.01),
     accounts: input.accounts || null,
+    adjustToBusinessDay: Boolean(input.adjustToBusinessDay),
+    holidays: Array.isArray(input.holidays) ? input.holidays : [],
+    // "libre": registro libre de pagos reales (siempre se aplican).
+    // "simulacion": avanza un "hoy" simulado; los pagos posteriores a ese hoy no se aplican.
+    paymentMode: input.paymentMode || "libre",
   };
 
   const series = parseIdiSeries(params.idiSeriesText);
@@ -518,7 +541,7 @@ export function simulateLoan(input) {
   let i = 0;
   while (i < params.termMonths) {
     const rawDueDate = i === 0 ? params.firstDueDate : addMonths(params.firstDueDate, i);
-    const dueDate = params.adjustToBusinessDay ? adjustToBusinessDayFunc(rawDueDate) : rawDueDate;
+    const dueDate = params.adjustToBusinessDay ? adjustToNextBusinessDay(rawDueDate, params.holidays) : rawDueDate;
     const periodStart = prevDate; // inicio del periodo para desglose diario
     const daysPeriod = calcDays(periodStart, dueDate, params.dayCount);
     const ratePeriod = params.annualRate * (daysPeriod / dayCountBase);
@@ -573,10 +596,15 @@ export function simulateLoan(input) {
     const override = overrides[i] || {};
     const overridePaymentDate = override.paymentDate || null;
     const overridePaymentAmount = Number.isFinite(override.paymentAmount) ? override.paymentAmount : 0;
+    // El tope por fecha "hoy" (asOf) solo aplica en modo simulacion, donde asOf representa
+    // el "hoy" simulado y un pago con fecha futura aun no debe reconocerse. En modo libre se
+    // registran pagos reales y deben aplicarse siempre (de lo contrario el pago se ignora,
+    // no se calcula la valorizacion al pagar y la cuota sigue acumulando mora indebidamente).
+    const enforceAsOf = params.paymentMode === "simulacion" && Boolean(asOfDate);
     const hasValidPayment = Boolean(
       overridePaymentDate &&
       overridePaymentAmount > 0 &&
-      (!asOfDate || overridePaymentDate.getTime() <= asOfDate.getTime())
+      (!enforceAsOf || overridePaymentDate.getTime() <= asOfDate.getTime())
     );
     const paymentDate = hasValidPayment ? overridePaymentDate : (asOfDate || dueDate);
     const paymentAmount = hasValidPayment ? overridePaymentAmount : 0;
