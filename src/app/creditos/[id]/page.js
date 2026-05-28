@@ -866,8 +866,8 @@ export default function LoanPage() {
                               <td><Hint value={fmtMoneyUnit(row.orderConv)} tooltip={row.explain?.orderConv} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio143)} tooltip={row.explain?.moratorio143} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio819)} tooltip={row.explain?.moratorio819} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.valorUvcCapital || 0)} tooltip={row.explain?.valorUvcCapital} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.valorUvcRend || 0)} tooltip={row.explain?.valorUvcRend} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcCapital || 0)} tooltip={row.explain?.valorUvcCapital} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcRend || 0)} tooltip={row.explain?.valorUvcRend} /></td>
                               <td>{row.status}</td>
                             </tr>
                           ); })}
