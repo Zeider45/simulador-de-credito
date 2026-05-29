@@ -50,7 +50,6 @@ const COLUMN_DESCRIPTIONS = {
   "Interes UVC": "Interes del periodo en UVC = Saldo UVC x tasa anual x dias/base.",
   "Amort UVC": "Amortizacion de capital en UVC = Cuota UVC - Interes UVC.",
   "Cuota UVC": "Cuota fija en UVC = P x (i / (1 - (1+i)^-n)).",
-  "IDI texto": "Valor del IDI (tal cual publicado) usado para valorizar al vencimiento.",
   "IDI venc": "Indice de Valor (IDI) a la fecha de vencimiento.",
   "Interes Bs": "Interes del periodo en bolivares (Interes UVC valorizado por IDI).",
   "Amort Bs": "Amortizacion de capital en bolivares = Amort UVC x IDI vencimiento.",
@@ -856,7 +855,7 @@ export default function LoanPage() {
                           <tr className="group-row">
                             <th colSpan={3}  className="group-info">—</th>
                             <th colSpan={4}  className="group-uvc">UVC</th>
-                            <th colSpan={2}  className="group-idi">IDI</th>
+                            <th colSpan={1}  className="group-idi">IDI</th>
                             <th colSpan={4}  className="group-bs">Bolivares</th>
                             <th colSpan={3}  className="group-pagos">Pagos</th>
                             <th colSpan={2}  className="group-mora">Mora</th>
@@ -870,7 +869,7 @@ export default function LoanPage() {
                           <tr>
                             {["#","Vencimiento","Dias",
                               "Saldo UVC","Interes UVC","Amort UVC","Cuota UVC",
-                              "IDI texto","IDI venc",
+                              "IDI venc",
                               "Interes Bs","Amort Bs","Cuota Bs","Saldo Bs",
                               "Pago fecha","Pago Bs","Pago cap Bs",
                               "Dias mora","Mora Bs",
@@ -901,7 +900,6 @@ export default function LoanPage() {
                               <td><Hint value={fmtUvcUnit(row.interestUvc)} tooltip={row.explain?.interestUvc} /></td>
                               <td><Hint value={fmtUvcUnit(row.amortUvc)} tooltip={row.explain?.amortUvc} /></td>
                               <td><Hint value={fmtUvcUnit(row.paymentUvc)} tooltip={row.explain?.paymentUvc} /></td>
-                              <td className="max-w-[90px] truncate"><Hint value={row.idiTextDue || "—"} tooltip={row.explain?.idiDue} /></td>
                               <td><Hint value={fmtUvc(row.idiDue)} tooltip={row.explain?.idiDue} /></td>
                               <td><Hint value={fmtMoneyUnit(row.interestBs)} tooltip={row.explain?.interestBs} /></td>
                               <td><Hint value={fmtMoneyUnit(row.amortBs)} tooltip={row.explain?.amortBs} /></td>
