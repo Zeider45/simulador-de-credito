@@ -67,8 +67,8 @@ const COLUMN_DESCRIPTIONS = {
   "Conv ord": "Rendimiento convencional en cuentas de orden (cuando la mora > Mora 2).",
   "Morat 143": "Moratorio 143 (vigente) = solo el interes moratorio clasificado como activo (Mora act).",
   "Morat 819": "Moratorio 819 (orden) = solo el interes moratorio clasificado en cuentas de orden (Mora ord).",
-  "Val UVC cap": "Valorizacion del capital pagado = Pago capital Bs - capital UVC x IDI desembolso.",
-  "Val UVC rend": "Valorizacion del rendimiento pagado = interes pagado - interes UVC x IDI desembolso.",
+  "Val UVC cap": "Valorizacion del capital por variacion del IDI = Amort Bs - Amort UVC x IDI desembolso. Si la cuota esta pagada, se muestra la valorizacion realizada al pagar.",
+  "Val UVC rend": "Valorizacion del rendimiento por variacion del IDI = Interes Bs - Interes UVC x IDI desembolso. Si la cuota esta pagada, se muestra la valorizacion realizada al pagar.",
   "Estado": "Clasificacion segun dias de mora (AL DIA, MORA 1, VENCIDO, VENCIDO 2, CASTIGO).",
 };
 
@@ -972,8 +972,8 @@ export default function LoanPage() {
                               <td><Hint value={fmtMoneyUnit(row.orderConv)} tooltip={row.explain?.orderConv} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio143)} tooltip={row.explain?.moratorio143} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio819)} tooltip={row.explain?.moratorio819} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcCapital || 0)} tooltip={row.explain?.valorUvcCapital} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcRend || 0)} tooltip={row.explain?.valorUvcRend} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcCapital || row.valorUvcCapital || 0)} tooltip={row.explain?.valorUvcCapital} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcRend || row.valorUvcRend || 0)} tooltip={row.explain?.valorUvcRend} /></td>
                               <td>{row.status}</td>
                             </tr>
                           ); })}
