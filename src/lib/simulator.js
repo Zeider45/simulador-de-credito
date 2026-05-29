@@ -630,11 +630,12 @@ export function simulateLoan(input) {
     const orderMora = isOrder ? moraBs : 0;
     const orderConv = isOrder ? interestBs : 0;
 
-    // moratorio 143 should consider the sum of mora + rendimiento (intereses) when the loan
-    // is still classified as 'activo' (i.e., daysLate <= mora2). Similarly, moratorio 819
-    // corresponds to the sum of mora + rendimiento in orden (castigo) when daysLate > mora2.
-    const moratorio143 = activeMora + activeConv;
-    const moratorio819 = orderMora + orderConv;
+    // Moratorio 143 (vigente) y Moratorio 819 (orden) reflejan UNICAMENTE el interes
+    // moratorio (la mora), no el rendimiento convencional. El rendimiento convencional se
+    // reporta por separado en las columnas Conv act / Conv ord. Ver CALCULOS_TABLA_PAGOS.md
+    // (Ejemplo A: Moratorio 143 = 69.62 = solo mora; Ejemplo B: Moratorio 813 = 522.17 = solo mora ord).
+    const moratorio143 = activeMora;
+    const moratorio819 = orderMora;
 
     // Aplicacion de pago (se calcula antes del desglose diario para reflejar amortizacion en fecha de pago)
     let remaining = Math.max(0, paymentAmount);
@@ -757,10 +758,12 @@ export function simulateLoan(input) {
         Interes_Bs: interestBs.toFixed(2),
         Mora2: params.mora2,
       }),
-      moratorio143: buildHint("Moratorio 143 = (mora + rendimiento) activos", {
+      moratorio143: buildHint("Moratorio 143 = Rend mora activos (solo mora)", {
+          Mora_act: activeMora.toFixed(2),
           Moratorio_143: moratorio143.toFixed(2),
         }),
-        moratorio819: buildHint("Moratorio 819 = (mora + rendimiento) orden", {
+        moratorio819: buildHint("Moratorio 819 = Rend mora orden (solo mora)", {
+          Mora_ord: orderMora.toFixed(2),
           Moratorio_819: moratorio819.toFixed(2),
         }),
       valorUvcCapital: buildHint("Val_UVC_cap = Amort_Bs - Ak * IDI_desembolso", {
