@@ -776,6 +776,18 @@ export function simulateLoan(input) {
         Ik: interestUvc.toFixed(6),
         IDI_desembolso: baseIdi.toFixed(8),
       }),
+      valorPaidUvcCapital: buildHint("Val_UVC_cap_pagada = Pago_cap_Bs - cap_pagado_UVC * IDI_desembolso", {
+        Pago_cap_Bs: paidPrincipalBs.toFixed(2),
+        cap_pagado_UVC: principalPaidUvc.toFixed(6),
+        IDI_desembolso: baseIdi.toFixed(8),
+        IDI_pago: idiPay.toFixed(8),
+      }),
+      valorPaidUvcRend: buildHint("Val_UVC_rend_pagada = Interes_pagado - Interes_pagado_UVC * IDI_desembolso", {
+        Interes_pagado: paidInterest.toFixed(2),
+        Interes_pagado_UVC: paidInterestUvc.toFixed(6),
+        IDI_desembolso: baseIdi.toFixed(8),
+        IDI_pago: idiPay.toFixed(8),
+      }),
       balanceUvc: buildHint("Saldo_UVC_fin = Saldo_UVC_ini - capital_pagado", {
         Saldo_UVC_ini: startBalanceUvc.toFixed(6),
         capital_pagado: principalPaidUvc.toFixed(6),
