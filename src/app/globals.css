@@ -284,6 +284,20 @@
 .schedule-table tbody td:nth-child(26) { background-color: var(--group-estado-light, rgba(55, 65, 81, 0.04)); }
 .dark .schedule-table tbody td:nth-child(26) { background-color: rgba(75, 85, 99, 0.15); }
 
+/* ─── Schedule table: totals footer ─────────────────────────────────────── */
+.schedule-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  font-weight: 700;
+  background: #1e2330;
+  color: rgba(255, 255, 255, 0.92);
+  border-top: 2px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 -2px 0 rgba(0,0,0,0.12), 0 -4px 12px rgba(0,0,0,0.18);
+  white-space: nowrap;
+  padding: 6px 10px;
+}
+
 /* ─── Schedule table: rows & separators ─────────────────────────────────── */
 .schedule-table tbody tr { border-bottom: 1px solid rgba(0,0,0,0.05); }
 

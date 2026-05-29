@@ -227,6 +227,39 @@ export default function LoanPage() {
   }, [loan?.id]);
 
   const ledgerRows = useMemo(() => buildLedgerRows(loan?.result), [loan?.result]);
+
+  // Totales por columna para la fila de pie de la tabla de simulacion.
+  const scheduleTotals = useMemo(() => {
+    const schedule = loan?.result?.schedule;
+    if (!schedule?.length) return null;
+    const t = {
+      interestUvc: 0, amortUvc: 0, paymentUvc: 0,
+      interestBs: 0, amortBs: 0, cuotaBs: 0,
+      pagoBs: 0, paidPrincipalBs: 0, moraBs: 0,
+      activeMora: 0, activeConv: 0, orderMora: 0, orderConv: 0,
+      moratorio143: 0, moratorio819: 0, valCap: 0, valRend: 0,
+    };
+    for (const r of schedule) {
+      t.interestUvc += r.interestUvc || 0;
+      t.amortUvc += r.amortUvc || 0;
+      t.paymentUvc += r.paymentUvc || 0;
+      t.interestBs += r.interestBs || 0;
+      t.amortBs += r.amortBs || 0;
+      t.cuotaBs += r.cuotaBs || 0;
+      t.pagoBs += (r.cuotaBs || 0) + (r.moraBs || 0);
+      t.paidPrincipalBs += r.paidPrincipalBs || 0;
+      t.moraBs += r.moraBs || 0;
+      t.activeMora += r.activeMora || 0;
+      t.activeConv += r.activeConv || 0;
+      t.orderMora += r.orderMora || 0;
+      t.orderConv += r.orderConv || 0;
+      t.moratorio143 += r.moratorio143 || 0;
+      t.moratorio819 += r.moratorio819 || 0;
+      t.valCap += r.valorPaidUvcCapital || 0;
+      t.valRend += r.valorPaidUvcRend || 0;
+    }
+    return t;
+  }, [loan?.result]);
   const selectClass = "h-10 w-full rounded-xl border border-border bg-card text-foreground px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
   const persistLoan = (nextLoan) => {
@@ -976,6 +1009,38 @@ export default function LoanPage() {
                             </tr>
                           ); })}
                         </tbody>
+                        {scheduleTotals && (
+                          <tfoot>
+                            <tr>
+                              <td>Totales</td>
+                              <td></td>
+                              <td></td>
+                              <td></td>
+                              <td>{fmtUvcUnit(scheduleTotals.interestUvc)}</td>
+                              <td>{fmtUvcUnit(scheduleTotals.amortUvc)}</td>
+                              <td>{fmtUvcUnit(scheduleTotals.paymentUvc)}</td>
+                              <td></td>
+                              <td>{fmtMoneyUnit(scheduleTotals.interestBs)}</td>
+                              <td>{fmtMoneyUnit(scheduleTotals.amortBs)}</td>
+                              <td>{fmtMoneyUnit(scheduleTotals.cuotaBs)}</td>
+                              <td></td>
+                              <td></td>
+                              <td className="text-sky-300">{fmtMoneyUnit(scheduleTotals.pagoBs)}</td>
+                              <td>{fmtMoneyUnit(scheduleTotals.paidPrincipalBs)}</td>
+                              <td></td>
+                              <td className="text-rose-300">{fmtMoneyUnit(scheduleTotals.moraBs)}</td>
+                              <td>{fmtMoneyUnit(scheduleTotals.activeMora)}</td>
+                              <td>{fmtMoneyUnit(scheduleTotals.activeConv)}</td>
+                              <td>{fmtMoneyUnit(scheduleTotals.orderMora)}</td>
+                              <td>{fmtMoneyUnit(scheduleTotals.orderConv)}</td>
+                              <td>{fmtMoneyUnit(scheduleTotals.moratorio143)}</td>
+                              <td>{fmtMoneyUnit(scheduleTotals.moratorio819)}</td>
+                              <td className="text-lime-300">{fmtMoneyUnit(scheduleTotals.valCap)}</td>
+                              <td className="text-lime-300">{fmtMoneyUnit(scheduleTotals.valRend)}</td>
+                              <td></td>
+                            </tr>
+                          </tfoot>
+                        )}
                       </table>
                     </div>
                   )}
