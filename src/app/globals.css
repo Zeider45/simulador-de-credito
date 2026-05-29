@@ -194,7 +194,7 @@
 .schedule-table th:nth-child(3), .schedule-table td:nth-child(3) { text-align: center; }
 
 .schedule-table th:nth-child(2),  .schedule-table td:nth-child(2),
-.schedule-table th:nth-child(14), .schedule-table td:nth-child(14) { text-align: left; }
+.schedule-table th:nth-child(13), .schedule-table td:nth-child(13) { text-align: left; }
 
 /* ─── Schedule table: column group tints (body) ─────────────────────────── */
 .col-uvc { background-color: var(--group-uvc-light, rgba(79, 70, 229, 0.04)); }
@@ -238,53 +238,51 @@
 .dark .schedule-table tbody td:nth-child(6),
 .dark .schedule-table tbody td:nth-child(7)  { background-color: rgba(79, 70, 229, 0.15); }
 
-/* IDI: cols 8-9 */
-.schedule-table tbody td:nth-child(8),
-.schedule-table tbody td:nth-child(9)  { background-color: var(--group-idi-light, rgba(5, 150, 105, 0.04)); }
-.dark .schedule-table tbody td:nth-child(8),
-.dark .schedule-table tbody td:nth-child(9)  { background-color: rgba(5, 150, 105, 0.15); }
+/* IDI: col 8 */
+.schedule-table tbody td:nth-child(8)  { background-color: var(--group-idi-light, rgba(5, 150, 105, 0.04)); }
+.dark .schedule-table tbody td:nth-child(8)  { background-color: rgba(5, 150, 105, 0.15); }
 
-/* BS: cols 10-13 */
-.schedule-table tbody td:nth-child(n+10):nth-child(-n+13) { background-color: var(--group-bs-light, rgba(217, 119, 6, 0.04)); }
-.dark .schedule-table tbody td:nth-child(n+10):nth-child(-n+13) { background-color: rgba(217, 119, 6, 0.15); }
+/* BS: cols 9-12 */
+.schedule-table tbody td:nth-child(n+9):nth-child(-n+12) { background-color: var(--group-bs-light, rgba(217, 119, 6, 0.04)); }
+.dark .schedule-table tbody td:nth-child(n+9):nth-child(-n+12) { background-color: rgba(217, 119, 6, 0.15); }
 
-/* PAGOS: cols 14-16 */
-.schedule-table tbody td:nth-child(n+14):nth-child(-n+16) { background-color: var(--group-pagos-light, rgba(2, 132, 199, 0.05)); }
-.dark .schedule-table tbody td:nth-child(n+14):nth-child(-n+16) { background-color: rgba(2, 132, 199, 0.15); }
+/* PAGOS: cols 13-15 */
+.schedule-table tbody td:nth-child(n+13):nth-child(-n+15) { background-color: var(--group-pagos-light, rgba(2, 132, 199, 0.05)); }
+.dark .schedule-table tbody td:nth-child(n+13):nth-child(-n+15) { background-color: rgba(2, 132, 199, 0.15); }
 
-/* MORA: cols 17-18 */
-.schedule-table tbody td:nth-child(17),
-.schedule-table tbody td:nth-child(18) { background-color: var(--group-mora-light, rgba(225, 29, 72, 0.05)); }
-.dark .schedule-table tbody td:nth-child(17),
-.dark .schedule-table tbody td:nth-child(18) { background-color: rgba(244, 63, 94, 0.15); }
+/* MORA: cols 16-17 */
+.schedule-table tbody td:nth-child(16),
+.schedule-table tbody td:nth-child(17) { background-color: var(--group-mora-light, rgba(225, 29, 72, 0.05)); }
+.dark .schedule-table tbody td:nth-child(16),
+.dark .schedule-table tbody td:nth-child(17) { background-color: rgba(244, 63, 94, 0.15); }
 
-/* ACTIVOS: cols 19-20 */
-.schedule-table tbody td:nth-child(19),
-.schedule-table tbody td:nth-child(20) { background-color: var(--group-activos-light, rgba(124, 58, 237, 0.04)); }
-.dark .schedule-table tbody td:nth-child(19),
-.dark .schedule-table tbody td:nth-child(20) { background-color: rgba(139, 92, 246, 0.15); }
+/* ACTIVOS: cols 18-19 */
+.schedule-table tbody td:nth-child(18),
+.schedule-table tbody td:nth-child(19) { background-color: var(--group-activos-light, rgba(124, 58, 237, 0.04)); }
+.dark .schedule-table tbody td:nth-child(18),
+.dark .schedule-table tbody td:nth-child(19) { background-color: rgba(139, 92, 246, 0.15); }
 
-/* ORDEN: cols 21-22 */
-.schedule-table tbody td:nth-child(21),
-.schedule-table tbody td:nth-child(22) { background-color: var(--group-orden-light, rgba(71, 85, 105, 0.04)); }
-.dark .schedule-table tbody td:nth-child(21),
-.dark .schedule-table tbody td:nth-child(22) { background-color: rgba(100, 116, 139, 0.15); }
+/* ORDEN: cols 20-21 */
+.schedule-table tbody td:nth-child(20),
+.schedule-table tbody td:nth-child(21) { background-color: var(--group-orden-light, rgba(71, 85, 105, 0.04)); }
+.dark .schedule-table tbody td:nth-child(20),
+.dark .schedule-table tbody td:nth-child(21) { background-color: rgba(100, 116, 139, 0.15); }
 
-/* MORATORIO: cols 23-24 */
-.schedule-table tbody td:nth-child(23),
-.schedule-table tbody td:nth-child(24) { background-color: var(--group-moratorio-light, rgba(192, 38, 211, 0.04)); }
-.dark .schedule-table tbody td:nth-child(23),
-.dark .schedule-table tbody td:nth-child(24) { background-color: rgba(217, 70, 239, 0.15); }
+/* MORATORIO: cols 22-23 */
+.schedule-table tbody td:nth-child(22),
+.schedule-table tbody td:nth-child(23) { background-color: var(--group-moratorio-light, rgba(192, 38, 211, 0.04)); }
+.dark .schedule-table tbody td:nth-child(22),
+.dark .schedule-table tbody td:nth-child(23) { background-color: rgba(217, 70, 239, 0.15); }
 
-/* VALOR: cols 25-26 */
-.schedule-table tbody td:nth-child(25),
-.schedule-table tbody td:nth-child(26) { background-color: var(--group-valor-light, rgba(101, 163, 13, 0.04)); }
-.dark .schedule-table tbody td:nth-child(25),
-.dark .schedule-table tbody td:nth-child(26) { background-color: rgba(132, 204, 22, 0.15); }
+/* VALOR: cols 24-25 */
+.schedule-table tbody td:nth-child(24),
+.schedule-table tbody td:nth-child(25) { background-color: var(--group-valor-light, rgba(101, 163, 13, 0.04)); }
+.dark .schedule-table tbody td:nth-child(24),
+.dark .schedule-table tbody td:nth-child(25) { background-color: rgba(132, 204, 22, 0.15); }
 
-/* ESTADO: col 27 */
-.schedule-table tbody td:nth-child(27) { background-color: var(--group-estado-light, rgba(55, 65, 81, 0.04)); }
-.dark .schedule-table tbody td:nth-child(27) { background-color: rgba(75, 85, 99, 0.15); }
+/* ESTADO: col 26 */
+.schedule-table tbody td:nth-child(26) { background-color: var(--group-estado-light, rgba(55, 65, 81, 0.04)); }
+.dark .schedule-table tbody td:nth-child(26) { background-color: rgba(75, 85, 99, 0.15); }
 
 /* ─── Schedule table: rows & separators ─────────────────────────────────── */
 .schedule-table tbody tr { border-bottom: 1px solid rgba(0,0,0,0.05); }
