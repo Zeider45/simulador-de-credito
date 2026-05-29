@@ -307,6 +307,59 @@ export default function LoanPage() {
     }
   };
 
+  // Paga automaticamente todas las cuotas pendientes con el monto ya calculado
+  // (cuota Bs + mora). Respeta los pagos ya registrados (no los sobrescribe).
+  const handlePayAll = async () => {
+    if (!loan?.result?.schedule?.length) return;
+    const isSimMode = loan.params.paymentMode === "simulacion";
+    const nextPayments = [...loan.payments];
+    loan.result.schedule.forEach((row, idx) => {
+      if (nextPayments[idx]?.paymentAmount != null) return; // ya pagada
+      const paymentDate = isSimMode
+        ? row.dueDate?.slice(0, 10)
+        : (nextPayments[idx]?.paymentDate || row.dueDate?.slice(0, 10) || new Date().toISOString().slice(0, 10));
+      nextPayments[idx] = {
+        ...nextPayments[idx],
+        paymentDate,
+        paymentAmount: (row.cuotaBs || 0) + (row.moraBs || 0),
+      };
+    });
+    const updatedLoan = { ...loan, payments: nextPayments };
+    persistLoan(updatedLoan);
+    setLoading(true);
+    setError("");
+    try {
+      const data = await fetchSimulation(updatedLoan.params, nextPayments, updatedLoan.accountsText);
+      persistLoan({ ...updatedLoan, result: data });
+    } catch (err) {
+      setError(err.message || "No se pudo simular");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Limpia todos los pagos registrados de una sola vez.
+  const handleClearAllPayments = async () => {
+    if (!loan?.result?.schedule?.length) return;
+    const nextPayments = loan.result.schedule.map((_, idx) => ({
+      ...loan.payments[idx],
+      paymentAmount: null,
+      paymentDate: null,
+    }));
+    const updatedLoan = { ...loan, payments: nextPayments };
+    persistLoan(updatedLoan);
+    setLoading(true);
+    setError("");
+    try {
+      const data = await fetchSimulation(updatedLoan.params, nextPayments, updatedLoan.accountsText);
+      persistLoan({ ...updatedLoan, result: data });
+    } catch (err) {
+      setError(err.message || "No se pudo simular");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleClearPayment = async (index) => {
     if (!loan) return;
     const nextPayments = [...loan.payments];
@@ -708,13 +761,30 @@ export default function LoanPage() {
                         {sidebarOpen ? "⟵ Ocultar panel" : "⟶ Mostrar panel"}
                       </button>
                       {loan.result?.schedule?.length > 0 && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => exportScheduleToCSV(loan.result.schedule, loan.name || loan.id?.slice(0, 8))}
-                        >
-                          Exportar CSV
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={handlePayAll}
+                            disabled={loading}
+                          >
+                            {loading ? "..." : "Pagar todas"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleClearAllPayments}
+                            disabled={loading}
+                          >
+                            Limpiar pagos
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => exportScheduleToCSV(loan.result.schedule, loan.name || loan.id?.slice(0, 8))}
+                          >
+                            Exportar CSV
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
