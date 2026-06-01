@@ -208,52 +208,6 @@ export default function InstallmentDetailPage() {
 
       <Card className="glass">
         <CardHeader>
-          <CardTitle>Detalle mora diaria (post-vencimiento)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {row.moraBreakdown && row.moraBreakdown.length ? (
-            <div className="overflow-x-auto rounded-2xl border border-border">
-              <table className="min-w-[900px] text-sm">
-                <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2">Fecha</th>
-                    <th className="px-3 py-2">Feriado</th>
-                    <th className="px-3 py-2">Fin semana</th>
-                    <th className="px-3 py-2">Origen IDI</th>
-                    <th className="px-3 py-2">IDI texto</th>
-                    <th className="px-3 py-2">IDI</th>
-                    <th className="px-3 py-2">Mora UVC</th>
-                    <th className="px-3 py-2">Mora Bs (dia)</th>
-                    <th className="px-3 py-2">Mora Bs (acum)</th>
-                    <th className="px-3 py-2">Genera</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border [&>tr:hover]:bg-muted/50">
-                  {row.moraBreakdown.map((m) => (
-                    <tr key={m.date}>
-                      <td className="px-3 py-2">{m.date}</td>
-                      <td className="px-3 py-2">{m.isHoliday ? "Feriado" : ""}</td>
-                      <td className="px-3 py-2">{m.isWeekend ? "Si" : ""}</td>
-                      <td className="px-3 py-2">{m.idiSource === "BCV" ? "BCV" : "Inventado"}</td>
-                      <td className="px-3 py-2">{m.idiText || "-"}</td>
-                      <td className="px-3 py-2">{fmtUvc(m.idi)}</td>
-                      <td className="px-3 py-2">{fmtUvc(m.dailyMoraUvc)} UVC</td>
-                      <td className="px-3 py-2">{fmtMoney(m.dailyMoraBs)} Bs</td>
-                      <td className="px-3 py-2">{fmtMoney(m.cumMoraBs)} Bs</td>
-                      <td className="px-3 py-2">{m.isAccruingMora ? "Genera" : ""}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No hay mora generada para esta cuota.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="glass">
-        <CardHeader>
           <div className="flex flex-col md:flex-row items-baseline justify-between gap-4">
             <CardTitle>Detalle diario — Cuota {row.index}</CardTitle>
             <div className="flex flex-wrap gap-2 text-[10px] font-semibold uppercase tracking-wider">
