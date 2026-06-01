@@ -50,11 +50,11 @@ const COLUMN_DESCRIPTIONS = {
   "Interes UVC": "Interes del periodo en UVC = Saldo UVC x tasa anual x dias/base.",
   "Amort UVC": "Amortizacion de capital en UVC = Cuota UVC - Interes UVC.",
   "Cuota UVC": "Cuota fija en UVC = P x (i / (1 - (1+i)^-n)).",
-  "IDI venc": "Indice de Valor (IDI) a la fecha de vencimiento.",
-  "Interes Bs": "Interes del periodo en bolivares (Interes UVC valorizado por IDI).",
-  "Amort Bs": "Amortizacion de capital en bolivares = Amort UVC x IDI vencimiento.",
-  "Cuota Bs": "Cuota total en bolivares = Interes Bs + Amort Bs. Clic para ver el detalle diario.",
-  "Saldo Bs": "Saldo de capital en bolivares = Saldo UVC final x IDI vencimiento.",
+  "IDI venc": "Indice de Valor (IDI) a la fecha de vencimiento. Muestra 0 cuando el IDI aun no se ha colocado (la cuota no ha llegado a su fecha de pago).",
+  "Interes Bs": "Interes del periodo en bolivares al desembolso (base) = Interes UVC x IDI desembolso. La revalorizacion se suma aparte en Val UVC rend.",
+  "Amort Bs": "Amortizacion de capital en bolivares al desembolso (base) = Amort UVC x IDI desembolso. La revalorizacion se suma aparte en Val UVC cap.",
+  "Cuota Bs": "Cuota total en bolivares al desembolso (base) = Interes Bs base + Amort Bs base. Clic para ver el detalle diario.",
+  "Saldo Bs": "Saldo de capital en bolivares al desembolso (base) = Saldo UVC final x IDI desembolso.",
   "Pago fecha": "Fecha en que se registra el pago de la cuota.",
   "Pago Bs": "Monto total a pagar (cuota Bs + mora si aplica).",
   "Pago cap Bs": "Capital efectivamente pagado en bolivares.",
@@ -66,8 +66,8 @@ const COLUMN_DESCRIPTIONS = {
   "Conv ord": "Rendimiento convencional en cuentas de orden (cuando la mora > Mora 2).",
   "Morat 143": "Moratorio 143 (vigente) = solo el interes moratorio clasificado como activo (Mora act).",
   "Morat 819": "Moratorio 819 (orden) = solo el interes moratorio clasificado en cuentas de orden (Mora ord).",
-  "Val UVC cap": "Valorizacion del capital realizada al pagar = Pago capital Bs - capital pagado UVC x IDI desembolso. Se calcula al registrar el pago de la cuota.",
-  "Val UVC rend": "Valorizacion del rendimiento realizada al pagar = interes pagado - interes pagado UVC x IDI desembolso. Se calcula al registrar el pago de la cuota.",
+  "Val UVC cap": "Valorizacion del capital (diferencia de revalorizacion) = Amort Bs - Amort UVC x IDI desembolso. Es lo que se suma a la base. Vale 0 mientras el IDI no este colocado (cuota no vencida).",
+  "Val UVC rend": "Valorizacion del rendimiento (diferencia de revalorizacion) = Interes Bs - Interes UVC x IDI desembolso. Es lo que se suma a la base. Vale 0 mientras el IDI no este colocado (cuota no vencida).",
   "Estado": "Clasificacion segun dias de mora (AL DIA, MORA 1, VENCIDO, VENCIDO 2, CASTIGO).",
 };
 
@@ -243,10 +243,10 @@ export default function LoanPage() {
       t.interestUvc += r.interestUvc || 0;
       t.amortUvc += r.amortUvc || 0;
       t.paymentUvc += r.paymentUvc || 0;
-      t.interestBs += r.interestBs || 0;
-      t.amortBs += r.amortBs || 0;
-      t.cuotaBs += r.cuotaBs || 0;
-      t.pagoBs += (r.cuotaBs || 0) + (r.moraBs || 0);
+      t.interestBs += r.interesBaseBs || 0;
+      t.amortBs += r.amortBaseBs || 0;
+      t.cuotaBs += r.cuotaBaseBs || 0;
+      t.pagoBs += (r.idiPlaced ? (r.cuotaBs || 0) : (r.cuotaBaseBs || 0)) + (r.moraBs || 0);
       t.paidPrincipalBs += r.paidPrincipalBs || 0;
       t.moraBs += r.moraBs || 0;
       t.activeMora += r.activeMora || 0;
@@ -255,8 +255,8 @@ export default function LoanPage() {
       t.orderConv += r.orderConv || 0;
       t.moratorio143 += r.moratorio143 || 0;
       t.moratorio819 += r.moratorio819 || 0;
-      t.valCap += r.valorPaidUvcCapital || 0;
-      t.valRend += r.valorPaidUvcRend || 0;
+      t.valCap += r.idiPlaced ? (r.valorUvcCapital || 0) : 0;
+      t.valRend += r.idiPlaced ? (r.valorUvcRend || 0) : 0;
     }
     return t;
   }, [loan?.result]);
@@ -933,15 +933,15 @@ export default function LoanPage() {
                               <td><Hint value={fmtUvcUnit(row.interestUvc)} tooltip={row.explain?.interestUvc} /></td>
                               <td><Hint value={fmtUvcUnit(row.amortUvc)} tooltip={row.explain?.amortUvc} /></td>
                               <td><Hint value={fmtUvcUnit(row.paymentUvc)} tooltip={row.explain?.paymentUvc} /></td>
-                              <td><Hint value={fmtUvc(row.idiDue)} tooltip={row.explain?.idiDue} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.interestBs)} tooltip={row.explain?.interestBs} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.amortBs)} tooltip={row.explain?.amortBs} /></td>
+                              <td><Hint value={row.idiPlaced ? fmtUvc(row.idiDue) : "0"} tooltip={row.idiPlaced ? row.explain?.idiDue : "IDI aun no colocado (la cuota no ha llegado a su fecha de pago): se muestra solo la base al desembolso."} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.interesBaseBs)} tooltip={row.explain?.interestBaseBs} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.amortBaseBs)} tooltip={row.explain?.amortBaseBs} /></td>
                               <td>
                                 <Link href={`/creditos/${loan.id}/detalle/${row.index}`} className="font-semibold text-primary underline underline-offset-2">
-                                  <Hint value={fmtMoneyUnit(row.cuotaBs)} tooltip={row.explain?.cuotaBs} />
+                                  <Hint value={fmtMoneyUnit(row.cuotaBaseBs)} tooltip={row.explain?.cuotaBs} />
                                 </Link>
                               </td>
-                              <td><Hint value={fmtMoneyUnit(row.balanceBs)} tooltip={row.explain?.saldoBs} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.balanceBaseBs)} tooltip={row.explain?.saldoBs} /></td>
                               <td>
                                 <div className="space-y-1 min-w-[130px]">
                                   {alreadyPaid ? (
@@ -988,7 +988,7 @@ export default function LoanPage() {
                               </td>
                               <td>
                                 <div className="space-y-0.5 text-right min-w-[90px]">
-                                  <p className="text-xs font-semibold">{fmtMoneyUnit((row.cuotaBs || 0) + (row.moraBs || 0))}</p>
+                                  <p className="text-xs font-semibold">{fmtMoneyUnit((row.idiPlaced ? (row.cuotaBs || 0) : (row.cuotaBaseBs || 0)) + (row.moraBs || 0))}</p>
                                   {(row.moraBs || 0) > 0 && (
                                     <p className="text-[10px] text-rose-500">mora: {fmtMoneyUnit(row.moraBs)}</p>
                                   )}
@@ -1003,8 +1003,8 @@ export default function LoanPage() {
                               <td><Hint value={fmtMoneyUnit(row.orderConv)} tooltip={row.explain?.orderConv} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio143)} tooltip={row.explain?.moratorio143} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio819)} tooltip={row.explain?.moratorio819} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcCapital || 0)} tooltip={row.explain?.valorPaidUvcCapital || row.explain?.valorUvcCapital} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcRend || 0)} tooltip={row.explain?.valorPaidUvcRend || row.explain?.valorUvcRend} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.idiPlaced ? (row.valorUvcCapital || 0) : 0)} tooltip={row.idiPlaced ? (row.explain?.valorUvcCapital) : "IDI aun no colocado: la valorizacion del capital es 0 hasta que la cuota llegue a su fecha de pago."} /></td>
+                              <td><Hint value={fmtMoneyUnit(row.idiPlaced ? (row.valorUvcRend || 0) : 0)} tooltip={row.idiPlaced ? (row.explain?.valorUvcRend) : "IDI aun no colocado: la valorizacion del rendimiento es 0 hasta que la cuota llegue a su fecha de pago."} /></td>
                               <td>{row.status}</td>
                             </tr>
                           ); })}
