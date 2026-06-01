@@ -578,12 +578,6 @@ export function simulateLoan(input) {
     const idiTextDue = params.creditUvc
       ? (typeof idiForDate.textFor === "function" ? idiForDate.textFor(dueDate) : idiDue.toFixed(8))
       : "1";
-    // IDI "colocado": existe un IDI real (BCV) para la fecha de vencimiento. Si la cuota aun no
-    // ha vencido / no hay IDI publicado, el IDI no esta colocado y la valorizacion vale 0:
-    // solo se muestra la base al desembolso (ver CALENDARIO en la vista de creditos).
-    const idiPlaced = params.creditUvc
-      ? (typeof idiForDate.sourceFor === "function" ? idiForDate.sourceFor(dueDate) === "BCV" : true)
-      : true;
     const interestBs = params.creditUvc && params.interestValuation === "idi_daily"
       ? uvcToBsDaily(interestUvc, prevDate, dueDate, daysPeriod, idiForDate)
       : interestUvc * idiDue;
@@ -962,7 +956,6 @@ export function simulateLoan(input) {
       paymentUvc: paymentUvcAdj,
       idiDue,
       idiTextDue,
-      idiPlaced,
       dueAmount: baseDue,
       interestBs,
       interesBaseBs,
@@ -971,8 +964,6 @@ export function simulateLoan(input) {
       amortBaseBs,
       amortVarBs,
       cuotaBs: interestBs + amortBs,
-      cuotaBaseBs: interesBaseBs + amortBaseBs,
-      balanceBaseBs: params.creditUvc ? balanceUvc * baseIdi : balanceBs,
       paymentDate,
       paymentAmount,
       daysLate,
