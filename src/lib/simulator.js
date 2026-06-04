@@ -542,6 +542,8 @@ export function simulateLoan(input) {
     // si el IDI de la fecha de pago es inferior al de otorgamiento, se emplea el de
     // otorgamiento para determinar el monto a pagar. Activo por defecto.
     idiFloorOnPrepay: input.idiFloorOnPrepay === undefined ? true : Boolean(input.idiFloorOnPrepay),
+    // Modo referencia/historico: admite tasas previas a la Res. 21-01-02 (16%/3%) sin bloquear.
+    allowHistoricalRates: Boolean(input.allowHistoricalRates),
     applyPrepay: Boolean(input.applyPrepay),
     recomputeAfterPrepay: Boolean(input.recomputeAfterPrepay),
     prepayAction: input.prepayAction || 'reduce_term', // 'reduce_term' or 'reduce_installment'
@@ -1138,6 +1140,7 @@ export function simulateLoan(input) {
     creditUvc: params.creditUvc,
     idiFloorOnPrepay: params.idiFloorOnPrepay,
     disbursementFeeRate: params.disbursementFeeRate,
+    allowHistoricalRates: params.allowHistoricalRates,
   });
 
   return {

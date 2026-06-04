@@ -22,9 +22,10 @@ export const DEFAULT_ACCOUNTS = `{
 
 export const initialParams = {
   principal: 160000,
-  // Tasa por defecto 6%: dentro del rango regulado 4%-10% (Res. BCV 21-01-02, Art. 3) y del
-  // rango del producto UVCC documentado (4%-6%, Resolucion 19-09-01 / Manual de Contabilidad).
-  annualRate: 6,
+  // Tasa por defecto 16%: coincide con la tabla de amortizacion de referencia documentada
+  // ("Tabla amortizacion nayrobis bolivar"). Excede el tope vigente de la Res. 21-01-02 (4%-10%),
+  // por lo que se usa junto con allowHistoricalRates para reproducir la tabla sin bloquear.
+  annualRate: 16,
   termMonths: 12,
   disbursementDate: "2025-10-16",
   firstDueDate: "2025-11-14",
@@ -38,7 +39,9 @@ export const initialParams = {
   interestValuation: "idi_daily",
   idiMissing: "linear",
   idiFutureStep: 0.01,
-  moraRate: 0.80,
+  // Mora por defecto 3%: coincide con la tabla de referencia documentada (Nayrobis). Excede el
+  // tope de la Res. 21-01-02 para creditos en UVC (0,80%); se admite con allowHistoricalRates.
+  moraRate: 3,
   graceDays: 0,
   moraBase: "amort",
   mora1: 30,
@@ -47,6 +50,9 @@ export const initialParams = {
   creditUvc: true,
   // Piso de IDI en cancelacion anticipada (Res. BCV 21-01-02, Art. 5 lit. b/c y Art. 6).
   idiFloorOnPrepay: true,
+  // Modo referencia/historico: permite reproducir las tablas documentadas (16%/3%) mostrando
+  // alerta en lugar de bloquear. Desactivar para exigir estrictamente los topes vigentes.
+  allowHistoricalRates: true,
   applyPrepay: true,
   recomputeAfterPrepay: true,
   prepayAction: "reduce_term",

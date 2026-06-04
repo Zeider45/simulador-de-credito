@@ -74,11 +74,14 @@ regulación del BCV/SUDEBAN y el código.
 - **Aplicación:** verificación bloqueante `COMISION_FLAT` en `evaluateCompliance()`; el valor por
   defecto se ajustó de 0,80% a **0,50%**.
 
-### 2.9 Banda de tasa del producto documentado (4%–6%)
+### 2.9 Banda de tasa y modo referencia (tablas históricas)
 - **Regla:** la presentación contable y la Res. 19-09-01 fijan el producto UVCC en **4%–6%** anual;
-  la Res. 21-01-02 (vigente) amplía a 4%–10%. Los modelos Excel usan 6% y 4%.
-- **Aplicación:** el tope bloqueante se mantiene en 4%–10% (norma vigente); el valor por defecto se
-  ajustó a **6%** para coincidir con el producto y los ejemplos documentados.
+  la Res. 21-01-02 (vigente) amplía a 4%–10%. Sin embargo, la **tabla de amortización de referencia
+  documentada** (`Tabla amortizacion nayrobis bolivar`) usa **16% de interés y 3% de mora**.
+- **Aplicación:** el crédito por defecto usa **16% / 3%** para reproducir exactamente esa tabla. Para
+  no bloquear ese caso, existe el parámetro **`allowHistoricalRates` (modo referencia, activo por
+  defecto)**: cuando está activo, los excesos de tasa/mora se reportan como **alerta** en lugar de
+  bloquear; al desactivarlo, se exigen estrictamente los topes vigentes (4%–10% y 0,80%).
 
 ### 2.10 Validación numérica contra los modelos Excel
 - Se reprodujo la tabla `Tabla amortizacion nayrobis bolivar` con el motor: capital en UVC
@@ -96,7 +99,7 @@ regulación del BCV/SUDEBAN y el código.
 |---|---|
 | `src/lib/regulatory.js` | Módulo compartido: `REGULATORY_LIMITS` y `evaluateCompliance()` (niveles, lista `blocking`, check `COMISION_FLAT` ≤ 0,50%) |
 | `src/lib/simulator.js` | Importa el módulo regulatorio; piso de IDI (`idiFloorOnPrepay`), enrutamiento de valorización a cuentas de orden (`frozen`), terminología IDI, **plan de cuentas SUDEBAN (131.35/131.36/358.01/513.01.M.35/513.01.M.36)** y asientos base/variación, `result.compliance` |
-| `src/lib/loanStorage.js` | `annualRate` por defecto **6%**, comisión flat por defecto **0,50%**, `idiFloorOnPrepay: true`, `DEFAULT_ACCOUNTS` con el plan UVCC |
+| `src/lib/loanStorage.js` | Crédito por defecto **16% / 3%** (tabla de referencia Nayrobis) con `allowHistoricalRates: true`, comisión flat **0,50%**, `idiFloorOnPrepay: true`, `DEFAULT_ACCOUNTS` con el plan UVCC |
 | `src/app/creditos/[id]/page.js` | Tarjeta "Cumplimiento BCV/SUDEBAN", **bloqueo previo** de simulación/pagos cuando hay violaciones, ayudas regulatorias, indicadores `piso`/`congelado`/`orden`, columnas CSV |
 | `docs/documentacion-tecnica.md` | Marco regulatorio actualizado, terminología, topes de tasa/mora, piso de IDI, congelamiento |
 

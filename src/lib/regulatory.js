@@ -15,7 +15,7 @@ export const REGULATORY_LIMITS = {
 // Recibe los parametros en unidades "humanas" (tasas en porcentaje anual).
 // No altera ningun calculo: devuelve un reporte que se usa para alertas y para el
 // bloqueo previo al guardado/simulacion (solo los checks de nivel "error" bloquean).
-export function evaluateCompliance({ annualRate, moraRate, creditUvc, idiFloorOnPrepay, disbursementFeeRate }) {
+export function evaluateCompliance({ annualRate, moraRate, creditUvc, idiFloorOnPrepay, disbursementFeeRate, allowHistoricalRates }) {
   const checks = [];
   const eps = 1e-9;
   const rate = Number(annualRate) || 0;
@@ -77,6 +77,19 @@ export function evaluateCompliance({ annualRate, moraRate, creditUvc, idiFloorOn
         : `Tasa de mora ${mora.toFixed(2)}% excede el maximo de 3% anual para creditos no expresados en UVC.`,
       "Res. BCV 21-01-02, Art. 7 (Paragrafo Unico)"
     );
+  }
+
+  // Modo referencia/historico: permite reproducir tablas previas a la Resolucion 21-01-02
+  // (p. ej. la tabla de amortizacion "Nayrobis" con 16% de interes y 3% de mora). Cuando esta
+  // activo, los excesos de tasa de interes y de mora se reportan como ALERTA (warning) en lugar
+  // de bloquear la simulacion; el resto de verificaciones (comision flat, piso de IDI) no cambia.
+  if (allowHistoricalRates) {
+    for (const c of checks) {
+      if (!c.ok && (c.code === "TASA_INTERES" || c.code === "TASA_MORA")) {
+        c.level = "warning";
+        c.message += " [modo referencia/historico: permitido para reproducir tablas previas a la Res. 21-01-02]";
+      }
+    }
   }
 
   const blocking = checks.filter((c) => !c.ok && c.level === "error");

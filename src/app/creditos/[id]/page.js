@@ -277,6 +277,7 @@ export default function LoanPage() {
       creditUvc: Boolean(complianceParams.creditUvc),
       idiFloorOnPrepay: complianceParams.idiFloorOnPrepay !== false,
       disbursementFeeRate: Number(complianceParams.disbursementFeeRate),
+      allowHistoricalRates: Boolean(complianceParams.allowHistoricalRates),
     });
   }, [complianceParams]);
 
@@ -823,6 +824,7 @@ export default function LoanPage() {
                   {[
                     { name: "creditUvc", label: "Credito en UVC", desc: "Aplica IDI", key: "creditUvc" },
                     { name: "idiFloorOnPrepay", label: "Piso de IDI", desc: "Cancelacion >= IDI otorgamiento", key: "idiFloorOnPrepay" },
+                    { name: "allowHistoricalRates", label: "Modo referencia", desc: "Permite tasas historicas (16%/3%) sin bloquear", key: "allowHistoricalRates" },
                     { name: "applyPrepay", label: "Aplicar prepago", desc: "Pago extra a capital", key: "applyPrepay" },
                     { name: "adjustToBusinessDay", label: "Ajuste a dia habil", desc: "Mueve vencimientos", key: "adjustToBusinessDay" },
                   ].map(({ name, label, desc }) => (
