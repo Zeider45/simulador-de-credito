@@ -17,7 +17,9 @@ export const DEFAULT_ACCOUNTS = `{
 
 export const initialParams = {
   principal: 160000,
-  annualRate: 16,
+  // Tasa por defecto dentro del rango regulado 4%-10% para creditos comerciales/microcreditos
+  // en UVC (Res. BCV 21-01-02, Art. 3).
+  annualRate: 10,
   termMonths: 12,
   disbursementDate: "2025-10-16",
   firstDueDate: "2025-11-14",
@@ -36,6 +38,8 @@ export const initialParams = {
   mora2: 60,
   mora3: 90,
   creditUvc: true,
+  // Piso de IDI en cancelacion anticipada (Res. BCV 21-01-02, Art. 5 lit. b/c y Art. 6).
+  idiFloorOnPrepay: true,
   applyPrepay: true,
   recomputeAfterPrepay: true,
   prepayAction: "reduce_term",

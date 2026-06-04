@@ -256,6 +256,78 @@ function uvcToBsDaily(uvcAmount, start, end, accrualDays, idiForDate) {
   return uvcAmount * (sumIdi / accrualDays);
 }
 
+// Limites regulatorios vigentes para creditos en UVC.
+// Fuente: Resolucion BCV N° 21-01-02 (G.O. N° 42.050 del 19/01/2021), que deroga y
+// sustituye las Resoluciones N° 19-09-01 / 20-02-01 sobre la Unidad de Valor de Credito
+// Comercial (UVCC) de la G.O. N° 41.742 del 21/10/2019.
+export const REGULATORY_LIMITS = {
+  uvcRateMin: 4, // Art. 3: tasa minima para creditos comerciales y microcreditos en UVC.
+  uvcRateMax: 10, // Art. 3: tasa maxima para creditos comerciales y microcreditos en UVC.
+  productiveRate: 2, // Art. 2: tasa de la Cartera Productiva Unica Nacional.
+  uvcMoraMax: 0.8, // Art. 7: mora maxima anual adicional para creditos en UVC.
+  nonUvcMoraMax: 3, // Art. 7 (Paragrafo Unico): mora maxima para creditos NO expresados en UVC.
+};
+
+// Evalua el cumplimiento de los limites del BCV/SUDEBAN para los parametros del credito.
+// No altera el calculo: devuelve un reporte que la UI muestra como alertas de cumplimiento.
+function evaluateCompliance(params) {
+  const checks = [];
+  const eps = 1e-9;
+  const add = (ok, code, message, ref, level) =>
+    checks.push({ ok, code, message, ref, level: level || (ok ? "info" : "error") });
+
+  const rate = params.annualRate * 100; // params.annualRate viene normalizado (dividido entre 100)
+  const mora = params.moraRate * 100;
+
+  if (params.creditUvc) {
+    const within = rate >= REGULATORY_LIMITS.uvcRateMin - eps && rate <= REGULATORY_LIMITS.uvcRateMax + eps;
+    const isProductive = Math.abs(rate - REGULATORY_LIMITS.productiveRate) < eps;
+    add(
+      within || isProductive,
+      "TASA_INTERES",
+      within
+        ? `Tasa de interes ${rate.toFixed(2)}% dentro del rango 4%-10% para creditos comerciales/microcreditos en UVC.`
+        : isProductive
+          ? `Tasa de interes ${rate.toFixed(2)}% corresponde a la Cartera Productiva Unica Nacional (2%).`
+          : `Tasa de interes ${rate.toFixed(2)}% fuera del rango permitido 4%-10% (o 2% para Cartera Productiva).`,
+      "Res. BCV 21-01-02, Arts. 2 y 3"
+    );
+
+    const moraOk = mora <= REGULATORY_LIMITS.uvcMoraMax + eps;
+    add(
+      moraOk,
+      "TASA_MORA",
+      moraOk
+        ? `Tasa de mora ${mora.toFixed(2)}% no excede el maximo de 0,80% anual adicional para creditos en UVC.`
+        : `Tasa de mora ${mora.toFixed(2)}% excede el maximo de 0,80% anual adicional permitido para creditos en UVC.`,
+      "Res. BCV 21-01-02, Art. 7"
+    );
+
+    add(
+      Boolean(params.idiFloorOnPrepay),
+      "PISO_IDI",
+      params.idiFloorOnPrepay
+        ? "Piso de IDI activo: en cancelacion anticipada, si el IDI de la fecha de pago es menor al de otorgamiento se emplea el de otorgamiento."
+        : "Piso de IDI desactivado: la cancelacion anticipada deberia emplear como minimo el IDI de la fecha de otorgamiento.",
+      "Res. BCV 21-01-02, Art. 5 lit. b/c y Art. 6",
+      params.idiFloorOnPrepay ? "info" : "warning"
+    );
+  } else {
+    const moraOk = mora <= REGULATORY_LIMITS.nonUvcMoraMax + eps;
+    add(
+      moraOk,
+      "TASA_MORA",
+      moraOk
+        ? `Tasa de mora ${mora.toFixed(2)}% no excede el maximo de 3% anual para creditos no expresados en UVC.`
+        : `Tasa de mora ${mora.toFixed(2)}% excede el maximo de 3% anual para creditos no expresados en UVC.`,
+      "Res. BCV 21-01-02, Art. 7 (Paragrafo Unico)"
+    );
+  }
+
+  const violations = checks.filter((c) => !c.ok).length;
+  return { checks, violations, compliant: violations === 0 };
+}
+
 function classifyDays(daysLate, t1, t2, t3) {
   if (daysLate <= 0) return "AL DIA";
   if (daysLate <= t1) return "MORA 1";
@@ -318,7 +390,7 @@ function buildColumnHints() {
     interestUvc: "Interes UVC = Saldo UVC inicial * tasa anual * dias/base",
     amortUvc: "Amort UVC = Cuota UVC - Interes UVC",
     paymentUvc: "Cuota UVC = P * (i / (1 - (1+i)^-n))",
-    idiDue: "IDI vencimiento (interpolado o arrastre)",
+    idiDue: "IDI = Indice de Inversion (BCV) a la fecha de vencimiento (interpolado o arrastre)",
     interestBs: "Interes Bs = Interes UVC * IDI (o valoracion diaria)",
     amortBs: "Amort Bs = Amort UVC * IDI vencimiento",
     cuotaBs: "Cuota Bs = Interes Bs + Amort Bs",
@@ -494,6 +566,10 @@ export function simulateLoan(input) {
     mora2: parseNumber(input.mora2, 60),
     mora3: parseNumber(input.mora3, 90),
     creditUvc: Boolean(input.creditUvc),
+    // Piso de IDI en cancelacion anticipada (Res. BCV 21-01-02, Art. 5 lit. b/c y Art. 6):
+    // si el IDI de la fecha de pago es inferior al de otorgamiento, se emplea el de
+    // otorgamiento para determinar el monto a pagar. Activo por defecto.
+    idiFloorOnPrepay: input.idiFloorOnPrepay === undefined ? true : Boolean(input.idiFloorOnPrepay),
     applyPrepay: Boolean(input.applyPrepay),
     recomputeAfterPrepay: Boolean(input.recomputeAfterPrepay),
     prepayAction: input.prepayAction || 'reduce_term', // 'reduce_term' or 'reduce_installment'
@@ -637,6 +713,18 @@ export function simulateLoan(input) {
     const moratorio143 = activeMora;
     const moratorio819 = orderMora;
 
+    // Congelamiento del credito vencido (Minuta SUDEBAN/BCV/ABV del 17-12-2019, punto 4):
+    // a la fecha de pase a vencido, el credito se "congela" y deja de someterse a la
+    // actualizacion diaria por IDI en las cuentas reales (Cartera de Credito y Patrimonio).
+    // La revalorizacion de capital y de rendimientos se devenga en cuentas de orden hasta que
+    // el cliente pague. Aqui enrutamos la valorizacion UVC del capital segun la clasificacion:
+    // vigente (activo) vs. en orden (vencido/congelado).
+    const frozen = isOrder;
+    const valorUvcCapitalActive = isOrder ? 0 : valorUvcCapital;
+    const valorUvcCapitalOrder = isOrder ? valorUvcCapital : 0;
+    const valorUvcRendActive = isOrder ? 0 : valorUvcRend;
+    const valorUvcRendOrder = isOrder ? valorUvcRend : 0;
+
     // Aplicacion de pago (se calcula antes del desglose diario para reflejar amortizacion en fecha de pago)
     let remaining = Math.max(0, paymentAmount);
     const paidMora = Math.min(remaining, unpaidMora + moraBs);
@@ -651,10 +739,16 @@ export function simulateLoan(input) {
     const paidExtra = params.applyPrepay ? remaining : 0;
 
     const idiPay = params.creditUvc ? idiForDate(paymentDate) : 1;
-    const rawPrincipalPaidUvc = (paidPrincipal + paidExtra) / idiPay;
+    // Piso de IDI (Res. BCV 21-01-02, Art. 5 lit. b/c y Art. 6): para determinar el monto a
+    // pagar en una cancelacion/abono, el IDI no puede ser inferior al de otorgamiento (baseIdi).
+    // En escenarios normales (IDI creciente) max(idiPay, baseIdi) = idiPay, por lo que no altera
+    // el resultado; solo actua cuando el IDI cae por debajo del de otorgamiento.
+    const idiPayEffective = params.creditUvc && params.idiFloorOnPrepay ? Math.max(idiPay, baseIdi) : idiPay;
+    const idiFloorApplied = params.creditUvc && params.idiFloorOnPrepay && idiPay < baseIdi;
+    const rawPrincipalPaidUvc = (paidPrincipal + paidExtra) / idiPayEffective;
     const principalPaidUvc = Math.min(startBalanceUvc, rawPrincipalPaidUvc);
     const paidPrincipalBs = paidPrincipal + paidExtra;
-    const paidInterestUvc = params.creditUvc ? paidInterest / idiPay : paidInterest;
+    const paidInterestUvc = params.creditUvc ? paidInterest / idiPayEffective : paidInterest;
     const valorPaidUvcCapital = params.creditUvc ? paidPrincipalBs - principalPaidUvc * baseIdi : 0;
     const valorPaidUvcRend = params.creditUvc ? paidInterest - paidInterestUvc * baseIdi : 0;
 
@@ -780,13 +874,13 @@ export function simulateLoan(input) {
         Pago_cap_Bs: paidPrincipalBs.toFixed(2),
         cap_pagado_UVC: principalPaidUvc.toFixed(6),
         IDI_desembolso: baseIdi.toFixed(8),
-        IDI_pago: idiPay.toFixed(8),
+        IDI_pago: idiPayEffective.toFixed(8),
       }),
       valorPaidUvcRend: buildHint("Val_UVC_rend_pagada = Interes_pagado - Interes_pagado_UVC * IDI_desembolso", {
         Interes_pagado: paidInterest.toFixed(2),
         Interes_pagado_UVC: paidInterestUvc.toFixed(6),
         IDI_desembolso: baseIdi.toFixed(8),
-        IDI_pago: idiPay.toFixed(8),
+        IDI_pago: idiPayEffective.toFixed(8),
       }),
       balanceUvc: buildHint("Saldo_UVC_fin = Saldo_UVC_ini - capital_pagado", {
         Saldo_UVC_ini: startBalanceUvc.toFixed(6),
@@ -976,6 +1070,12 @@ export function simulateLoan(input) {
       moratorio819,
       valorUvcCapital,
       valorUvcRend,
+      valorUvcCapitalActive,
+      valorUvcCapitalOrder,
+      valorUvcRendActive,
+      valorUvcRendOrder,
+      frozen,
+      idiFloorApplied,
       status: classifyDays(daysLate, params.mora1, params.mora2, params.mora3),
       balanceUvc,
       balanceBs,
@@ -1060,6 +1160,7 @@ export function simulateLoan(input) {
 
   const accounts = buildAccounts(params.accounts);
   const ledger = buildLedger(params, schedule, accounts, feeBs);
+  const compliance = evaluateCompliance(params);
 
   return {
     params: {
@@ -1072,5 +1173,6 @@ export function simulateLoan(input) {
     columnHints: buildColumnHints(),
     ledger,
     accounts,
+    compliance,
   };
 }

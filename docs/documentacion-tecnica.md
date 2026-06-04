@@ -8,7 +8,7 @@
 ## Tabla de contenido
 
 1. [Marco regulatorio de referencia](#1-marco-regulatorio-de-referencia)
-2. [Unidad de Valor Constante (UVC) e Índice de Actualización (IDI)](#2-unidad-de-valor-constante-uvc-e-índice-de-actualización-idi)
+2. [Unidad de Valor de Crédito (UVC) e Índice de Inversión (IDI)](#2-unidad-de-valor-de-crédito-uvc-e-índice-de-inversión-idi)
 3. [Sistema de amortización francesa (cuota fija)](#3-sistema-de-amortización-francesa-cuota-fija)
 4. [Base de días (convención de cómputo)](#4-base-de-días-convención-de-cómputo)
 5. [Valoración de intereses: IDI diario vs. IDI al vencimiento](#5-valoración-de-intereses-idi-diario-vs-idi-al-vencimiento)
@@ -32,7 +32,9 @@ El sistema está diseñado para cumplir con el siguiente conjunto normativo vene
 |---|---|---|
 | **Ley de Instituciones del Sector Bancario (LISB)** — G.O. N° 6.154 Ext. del 19/11/2014 | AN / Ejecutivo Nacional | Marco general de las operaciones crediticias, tasas de interés y protección al usuario financiero |
 | **Ley del Banco Central de Venezuela (LBCV)** — G.O. N° 6.211 Ext. del 30/12/2015 | BCV | Faculta al BCV para emitir la UVC, publicar el IDI y regular el sistema monetario |
-| **Resolución BCV sobre Unidad de Valor Constante** — Convenio Cambiario N° y Resoluciones del Directorio BCV | BCV | Define la UVC, el IDI y la metodología de actualización de créditos |
+| **Resolución BCV N° 19-09-01** — G.O. N° 41.742 del 21/10/2019 (vigente desde el 28/10/2019 por Circular BCV del 24/10/2019) | BCV | Crea la obligatoriedad de expresar los créditos comerciales en **Unidad de Valor de Crédito Comercial (UVCC)**, dividiendo el monto en Bs entre el **Índice de Inversión (IDI)** de la fecha de otorgamiento |
+| **Resolución BCV N° 21-01-02** — G.O. N° 42.050 del 19/01/2021 (vigente desde el 01/02/2021) | BCV | Norma **vigente** que sustituye las anteriores: define la **Unidad de Valor de Crédito (UVC)**, el IDI, las tasas de interés (Arts. 2-4), el tope de mora (Art. 7), el piso de IDI en cancelación anticipada (Arts. 5 y 6) |
+| **Circular SUDEBAN SIB-DSB-CJ-OD-13083** del 14/11/2019 | SUDEBAN | Cláusulas mínimas del contrato UVCC: amortización de capital en UVC, cancelación anticipada con piso de IDI, % de mora según el Ente Emisor |
 | **Manual de Contabilidad para Instituciones Financieras Bancarias** — SUDEBAN | SUDEBAN | Plan de cuentas oficial (códigos 143, 819, 1310, 1340, 1350, etc.) |
 | **Normas relativas a la Clasificación del Riesgo en la Cartera de Créditos** — Resolución SUDEBAN N° 009.16 | SUDEBAN | Umbrales de mora, provisiones y clasificación por días de atraso |
 | **Normas para los Usuarios de los Servicios Financieros** — Resolución SUDEBAN | SUDEBAN | Transparencia de tasas, método de cálculo y divulgación al cliente |
@@ -41,13 +43,15 @@ El sistema está diseñado para cumplir con el siguiente conjunto normativo vene
 
 ---
 
-## 2. Unidad de Valor Constante (UVC) e Índice de Actualización (IDI)
+## 2. Unidad de Valor de Crédito (UVC) e Índice de Inversión (IDI)
 
 ### 2.1 Fundamento regulatorio
 
-El BCV creó la **Unidad de Valor Constante (UVC)** como unidad de cuenta para créditos, con el objetivo de preservar el valor real del capital prestado frente a la inflación. La base legal es la **Ley del BCV (art. 7, numeral 5)**, que autoriza al BCV a emitir instrumentos de valor estable, y las resoluciones del Directorio BCV que establecen la metodología del **Índice de Actualización (IDI)**.
+El BCV creó la **Unidad de Valor de Crédito (UVC)** — denominada **Unidad de Valor de Crédito Comercial (UVCC)** en la Resolución original N° 19-09-01 de 2019 — como unidad de cuenta obligatoria para los créditos comerciales y microcréditos en moneda nacional, con el objetivo de preservar el valor real del capital prestado. La norma vigente es la **Resolución BCV N° 21-01-02** (G.O. N° 42.050 del 19/01/2021).
 
-El IDI es publicado diariamente por el BCV y expresa cuántos bolívares equivale una UVC en una fecha determinada.
+Conforme al **Artículo 1** de dicha Resolución, la obligación se expresa en UVC **dividiendo el monto en bolívares a ser liquidado entre el Índice de Inversión (IDI) vigente para la fecha de otorgamiento**, determinado por el BCV tomando en cuenta la variación del tipo de cambio de referencia de mercado y **publicado diariamente** en su página web.
+
+> **Nota de terminología:** el índice se denomina **Índice de Inversión (IDI)**, no "Índice de Actualización". Expresa cuántos bolívares equivale una UVC en una fecha determinada.
 
 ### 2.2 Conversión de capital a UVC
 
@@ -213,7 +217,14 @@ El **período de gracia** es un parámetro configurado en el contrato. SUDEBAN p
 
 ### 7.2 Tasa de mora
 
-La tasa de mora es fijada contractualmente y debe respetar los límites establecidos por el BCV. Históricamente, el BCV ha publicado tasas máximas de mora mediante resoluciones. El sistema acepta la tasa como parámetro configurable expresada en porcentaje anual.
+La tasa de mora es fijada contractualmente y debe respetar los **topes del Artículo 7 de la Resolución BCV N° 21-01-02**, que se aplican como tasa **adicional a la tasa de interés anual pactada**:
+
+| Tipo de crédito | Mora máxima anual adicional |
+|---|---|
+| Expresado en UVC (comercial / microcrédito / Cartera Productiva) | **0,80%** |
+| No expresado en UVC | **3,00%** |
+
+El sistema acepta la tasa como parámetro configurable en porcentaje anual y **verifica automáticamente** estos topes en el reporte de cumplimiento (`result.compliance`), marcando una alerta cuando se exceden. La mora se calcula únicamente sobre el capital vencido (sin anatocismo).
 
 ### 7.3 Fórmula de mora en UVC
 
@@ -353,6 +364,32 @@ Nueva_Cuota_UVC = Nuevo_Saldo_UVC × [ i / (1 − (1 + i)^(−n_restante)) ]
 
 **Sustento:** La **LISB, art. 49** establece el derecho del deudor a realizar pagos anticipados sin penalización en créditos de consumo. SUDEBAN, a través de sus Normas para los Usuarios de los Servicios Financieros, exige que la institución explique al cliente el efecto del prepago (si reduce plazo o cuota) antes de aplicarlo. Ambas políticas son regulatoriamente válidas; la selección debe estar especificada en el contrato.
 
+### 11.3 Piso de IDI en cancelación anticipada (`idiFloorOnPrepay`)
+
+El **Artículo 5, literales b) y c)**, y el **Artículo 6** de la Resolución BCV N° 21-01-02 (reiterados en la Circular SUDEBAN 13083) establecen que el deudor puede cancelar anticipadamente **sin penalidad**, pero con una protección para el acreedor:
+
+> *"Si por alguna razón, el Índice de Inversión de la fecha anticipada de cancelación del préstamo resultase inferior al Índice de Inversión de la fecha de otorgamiento del préstamo, a efecto de la determinación del monto a pagar se empleará el Índice de Inversión vigente para la fecha de otorgamiento del crédito."*
+
+El sistema implementa este **piso** mediante el parámetro `idiFloorOnPrepay` (activo por defecto). Al valorar el capital cancelado/abonado:
+
+```
+IDI_efectivo = max( IDI_fecha_pago , IDI_desembolso )
+```
+
+En el escenario normal (IDI creciente por inflación) `IDI_efectivo = IDI_fecha_pago`, por lo que no altera el cálculo; el piso solo actúa cuando el IDI cae por debajo del de otorgamiento, garantizando que el banco recupere al menos el valor nominal en UVC. La fila del calendario expone el indicador `idiFloorApplied` cuando el piso se activó.
+
+---
+
+## 11-bis. Congelamiento del crédito vencido (cuentas de orden)
+
+Conforme a la **Minuta de la reunión SUDEBAN / BCV / ABV del 17/12/2019 (punto 4)**, a la fecha en que un crédito UVC pasa a **vencido**:
+
+- El crédito se **congela**: deja de someterse a la actualización diaria por IDI en las **cuentas reales** (Cartera de Crédito y Patrimonio).
+- Las revalorizaciones de capital y de rendimientos se devengan en **cuentas de orden** hasta que el cliente pague; al cobrarse, se registran en las cuentas de resultados/capital.
+- El incremento del capital revaluado se registra en la cuenta patrimonial **358.00 "Variación de Créditos Comerciales"** hasta su cobro efectivo.
+
+El motor refleja esta separación: cuando una cuota supera el umbral `mora2` (estado en orden), los rendimientos y la mora se enrutan al grupo **819**, y la valorización UVC del capital y de los rendimientos se reporta en los campos `valorUvcCapitalOrder` / `valorUvcRendOrder` (con la bandera `frozen`), en lugar de `valorUvcCapitalActive` / `valorUvcRendActive`.
+
 ---
 
 ## 12. Asientos contables
@@ -429,7 +466,9 @@ El sistema acepta una lista de feriados configurables en formato `YYYY-MM-DD`. S
 | `principal` | Capital desembolsado en Bs | Sin límite técnico; el monto máximo depende del tipo de crédito y la capacidad de pago del cliente (normativa SUDEBAN de riesgo crediticio) |
 | `annualRate` | Tasa de interés anual (%) | El BCV fija periódicamente tasas máximas por tipo de crédito. Para créditos hipotecarios, agrícolas y de manufactura existen tasas preferenciales mandatorias |
 | `termMonths` | Plazo en meses | Variable por tipo de crédito. SUDEBAN establece plazos máximos orientativos por sector |
-| `moraRate` | Tasa de mora anual (%) | El BCV publica límites máximos de mora. Como referencia histórica, se ha situado entre 1× y 3× la tasa activa aplicada |
+| `annualRate` | Tasa de interés anual (%) | UVC comercial/microcrédito: **4% a 10%** (Art. 3); Cartera Productiva Única Nacional: **2%** (Art. 2). Res. BCV 21-01-02 |
+| `moraRate` | Tasa de mora anual (%) | Máximo **0,80%** adicional para créditos en UVC; **3%** para créditos no UVC (Art. 7, Res. BCV 21-01-02) |
+| `idiFloorOnPrepay` | Piso de IDI en cancelación anticipada | Si el IDI de la fecha de pago < IDI de otorgamiento, se usa el de otorgamiento (Arts. 5 lit. b/c y 6, Res. BCV 21-01-02) |
 | `graceDays` | Días de gracia sin mora | Definido contractualmente. SUDEBAN no impone un mínimo pero las Normas de Protección al Usuario recomiendan su divulgación |
 | `dayCount` | Convención de días (30/360 o Actual/365) | Definido contractualmente; debe especificarse en el contrato y divulgarse al cliente |
 | `creditUvc` | Activar denominación en UVC | Obligatorio para créditos clasificados por el BCV como "créditos en UVC". Opcional para créditos ordinarios en bolívares |
@@ -442,8 +481,8 @@ El sistema acepta una lista de feriados configurables en formato `YYYY-MM-DD`. S
 
 | Término | Definición |
 |---|---|
-| **UVC** | Unidad de Valor Constante. Unidad de cuenta emitida por el BCV para créditos ajustados por inflación |
-| **IDI** | Índice de Actualización. Factor publicado diariamente por el BCV que expresa el valor en Bs de una UVC |
+| **UVC** | Unidad de Valor de Crédito (UVCC = Unidad de Valor de Crédito Comercial en la Resolución 19-09-01 de 2019). Unidad de cuenta emitida por el BCV para créditos en moneda nacional |
+| **IDI** | Índice de Inversión. Factor publicado diariamente por el BCV (refleja la variación del tipo de cambio de referencia de mercado) que expresa el valor en Bs de una UVC |
 | **Amortización** | Abono al capital del crédito en cada cuota |
 | **Cuota** | Pago periódico que incluye intereses + amortización de capital |
 | **Mora** | Interés punitorio por atraso en el pago de la cuota |

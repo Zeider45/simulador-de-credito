@@ -437,6 +437,7 @@ export default function LoanPage() {
 
   const displayName = loan.name || `Credito ${loan.id?.slice(0, 8)}`;
   const summary = loan.result?.summary;
+  const compliance = loan.result?.compliance;
 
   return (
     <div className="space-y-6">
@@ -526,6 +527,37 @@ export default function LoanPage() {
               </div>
             </CardContent>
           </Card>
+
+          {compliance && (
+            <Card className={`glass ${compliance.compliant ? "border-emerald-500/30" : "border-amber-500/40"}`}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  Cumplimiento BCV/SUDEBAN
+                  <Badge variant={compliance.compliant ? "success" : "destructive"}>
+                    {compliance.compliant ? "OK" : `${compliance.violations} alerta(s)`}
+                  </Badge>
+                </CardTitle>
+                <CardDescription>Limites de Resolucion BCV 21-01-02.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-xs">
+                {compliance.checks.map((c) => (
+                  <div
+                    key={c.code}
+                    className={`rounded-lg px-3 py-2 ${
+                      c.ok
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                        : c.level === "warning"
+                          ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                          : "bg-rose-500/10 text-rose-700 dark:text-rose-400"
+                    }`}
+                  >
+                    <p className="font-semibold">{c.ok ? "✓" : "⚠"} {c.message}</p>
+                    <p className="mt-0.5 opacity-70">{c.ref}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="glass">
             <CardHeader>
@@ -657,6 +689,7 @@ export default function LoanPage() {
                   <div className="space-y-2">
                     <Label>Tasa anual (%)</Label>
                     <Input name="annualRate" type="number" step="0.0001" value={loan.params.annualRate} onChange={handleInputChange} />
+                    <p className="text-xs text-muted-foreground">UVC comercial/microcredito: 4%-10% (2% Cartera Productiva). Res. BCV 21-01-02, Arts. 2 y 3.</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Plazo (meses)</Label>
@@ -714,6 +747,7 @@ export default function LoanPage() {
                   <div className="space-y-2">
                     <Label>Tasa mora anual (%)</Label>
                     <Input name="moraRate" type="number" step="0.0001" value={loan.params.moraRate} onChange={handleInputChange} />
+                    <p className="text-xs text-muted-foreground">Maximo adicional: 0,80% en UVC (3% si no es UVC). Res. BCV 21-01-02, Art. 7.</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Dias de gracia</Label>
@@ -742,6 +776,7 @@ export default function LoanPage() {
                 <CardContent className="grid gap-3 md:grid-cols-3">
                   {[
                     { name: "creditUvc", label: "Credito en UVC", desc: "Aplica IDI", key: "creditUvc" },
+                    { name: "idiFloorOnPrepay", label: "Piso de IDI", desc: "Cancelacion >= IDI otorgamiento", key: "idiFloorOnPrepay" },
                     { name: "applyPrepay", label: "Aplicar prepago", desc: "Pago extra a capital", key: "applyPrepay" },
                     { name: "adjustToBusinessDay", label: "Ajuste a dia habil", desc: "Mueve vencimientos", key: "adjustToBusinessDay" },
                   ].map(({ name, label, desc }) => (
