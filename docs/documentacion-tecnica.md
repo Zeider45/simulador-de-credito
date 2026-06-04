@@ -34,7 +34,7 @@ El sistema está diseñado para cumplir con el siguiente conjunto normativo vene
 | **Ley del Banco Central de Venezuela (LBCV)** — G.O. N° 6.211 Ext. del 30/12/2015 | BCV | Faculta al BCV para emitir la UVC, publicar el IDI y regular el sistema monetario |
 | **Resolución BCV N° 19-09-01** — G.O. N° 41.742 del 21/10/2019 (vigente desde el 28/10/2019 por Circular BCV del 24/10/2019) | BCV | Crea la obligatoriedad de expresar los créditos comerciales en **Unidad de Valor de Crédito Comercial (UVCC)**, dividiendo el monto en Bs entre el **Índice de Inversión (IDI)** de la fecha de otorgamiento |
 | **Resolución BCV N° 21-01-02** — G.O. N° 42.050 del 19/01/2021 (vigente desde el 01/02/2021) | BCV | Norma **vigente** que sustituye las anteriores: define la **Unidad de Valor de Crédito (UVC)**, el IDI, las tasas de interés (Arts. 2-4), el tope de mora (Art. 7), el piso de IDI en cancelación anticipada (Arts. 5 y 6) |
-| **Circular SUDEBAN SIB-DSB-CJ-OD-13083** del 14/11/2019 | SUDEBAN | Cláusulas mínimas del contrato UVCC: amortización de capital en UVC, cancelación anticipada con piso de IDI, % de mora según el Ente Emisor |
+| **Circular SUDEBAN SIB-DSB-CJ-OD-13083** del 14/11/2019 | SUDEBAN | Cláusulas mínimas del contrato UVC: amortización de capital en UVC, cancelación anticipada con piso de IDI, % de mora según el Ente Emisor |
 | **Manual de Contabilidad para Instituciones Financieras Bancarias** — SUDEBAN | SUDEBAN | Plan de cuentas oficial (códigos 143, 819, 1310, 1340, 1350, etc.) |
 | **Normas relativas a la Clasificación del Riesgo en la Cartera de Créditos** — Resolución SUDEBAN N° 009.16 | SUDEBAN | Umbrales de mora, provisiones y clasificación por días de atraso |
 | **Normas para los Usuarios de los Servicios Financieros** — Resolución SUDEBAN | SUDEBAN | Transparencia de tasas, método de cálculo y divulgación al cliente |
@@ -396,7 +396,7 @@ El motor refleja esta separación: cuando una cuota supera el umbral `mora2` (es
 
 ### 12.1 Plan de cuentas utilizado
 
-Los códigos corresponden a las subcuentas creadas en el **Manual de Contabilidad para Instituciones Bancarias de SUDEBAN** (Circular SIB-II-GGR-GNP-12161 del 28/10/2019) para los créditos comerciales en UVCC:
+Los códigos corresponden a las subcuentas creadas en el **Manual de Contabilidad para Instituciones Bancarias de SUDEBAN** (Circular SIB-II-GGR-GNP-12161 del 28/10/2019) para los créditos comerciales en UVC:
 
 | Cuenta | Código | Nombre |
 |---|---|---|

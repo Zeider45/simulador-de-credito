@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Genera la documentacion Word del funcionamiento de los creditos UVCC."""
+"""Genera la documentacion Word del funcionamiento de los creditos UVC."""
 from docx import Document
 from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -8,7 +8,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-OUT = "/home/user/simulador-de-credito/docs/Funcionamiento-Creditos-UVCC.docx"
+OUT = "/home/user/simulador-de-credito/docs/Funcionamiento-Creditos-UVC.docx"
 
 # ---- Colores ----
 AZUL = RGBColor(0x1F, 0x3A, 0x5F)
@@ -92,7 +92,7 @@ def table(headers, rows, widths=None):
 # ============================ PORTADA ============================
 t = doc.add_paragraph()
 t.alignment = WD_ALIGN_PARAGRAPH.CENTER
-r = t.add_run("Funcionamiento de los Creditos Comerciales\nexpresados en Unidad de Valor de Credito (UVC/UVCC)")
+r = t.add_run("Funcionamiento de los Creditos Comerciales\nexpresados en Unidad de Valor de Credito (UVC)")
 r.bold = True; r.font.size = Pt(22); r.font.color.rgb = AZUL
 sub = doc.add_paragraph(); sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
 rs = sub.add_run("Formulas, asientos contables, clasificacion de cartera y situaciones operativas\nDocumentacion tecnica y regulatoria del simulador de credito")
@@ -121,7 +121,7 @@ doc.add_page_break()
 # ============================ 1. INTRODUCCION ============================
 heading("1. Introduccion y alcance", 1)
 source('own', "Sintesis redactada por el asistente a partir del conjunto del proyecto.")
-para("Este documento describe como debe funcionar un credito comercial expresado en Unidad de Valor de Credito (UVC), tambien llamada Unidad de Valor de Credito Comercial (UVCC) en la normativa de 2019. Cubre las formulas de calculo, el desglose de la cuota, la mora, la clasificacion de la cartera, los asientos contables, el tratamiento del credito vencido, la cancelacion anticipada y distintas situaciones operativas.")
+para("Este documento describe como debe funcionar un credito comercial expresado en Unidad de Valor de Credito (UVC). En la normativa original de 2019 esta unidad se denomino 'Unidad de Valor de Credito Comercial'; la norma vigente (Resolucion 21-01-02 de 2021) la nombra simplemente UVC, termino que se usa en todo este documento. Cubre las formulas de calculo, el desglose de la cuota, la mora, la clasificacion de la cartera, los asientos contables, el tratamiento del credito vencido, la cancelacion anticipada y distintas situaciones operativas.")
 para("El objetivo es que cualquier persona (negocio, contabilidad o desarrollo) entienda el modelo completo y pueda auditar cada numero contra su fundamento.")
 
 # ============================ 2. MARCO REGULATORIO ============================
@@ -130,10 +130,10 @@ source('doc', "Carpeta 'documentacion/': resoluciones BCV, circulares SUDEBAN y 
 table(
     ["Instrumento", "Fecha / Gaceta", "Que aporta"],
     [
-        ["Resolucion BCV N° 19-09-01", "G.O. 41.742 del 21/10/2019", "Crea la obligacion de expresar los creditos comerciales en UVCC y dividir el monto en Bs entre el Indice de Inversion (IDI)."],
+        ["Resolucion BCV N° 19-09-01", "G.O. 41.742 del 21/10/2019", "Crea la obligacion de expresar los creditos comerciales en UVC (alli denominada 'Comercial') y dividir el monto en Bs entre el Indice de Inversion (IDI)."],
         ["Aviso Oficial BCV", "G.O. 41.742 del 21/10/2019", "Comision flat maxima de 0,50% del monto del credito."],
         ["Circular BCV de entrada en vigencia", "24/10/2019", "Fija la aplicacion de la Resolucion 19-09-01 a partir del 28/10/2019."],
-        ["Circular SUDEBAN SIB-DSB-CJ-OD-13083", "14/11/2019", "Clausulas minimas del contrato: amortizacion de capital en UVCC, cancelacion anticipada con piso de IDI, % de mora segun el BCV."],
+        ["Circular SUDEBAN SIB-DSB-CJ-OD-13083", "14/11/2019", "Clausulas minimas del contrato: amortizacion de capital en UVC, cancelacion anticipada con piso de IDI, % de mora segun el BCV."],
         ["Modificacion Manual de Contabilidad (Circular SIB-II-GGR-GNP-12161)", "28/10/2019", "Crea las subcuentas contables 131.35, 131.36, 358.01, 513.01.M.35 y 513.01.M.36."],
         ["Minuta reunion SUDEBAN/BCV/ABV", "17/12/2019", "Tratamiento del credito vencido: congelamiento y registro en cuentas de orden/patrimonio."],
         ["Resolucion BCV N° 21-01-02 (VIGENTE)", "G.O. 42.050 del 19/01/2021; vigente 01/02/2021", "Norma actual: UVC, IDI, tasas 4%-10% (2% Cartera Productiva), mora 0,80%, piso de IDI en cancelacion anticipada."],
@@ -183,7 +183,7 @@ source('doc', "Modelos Excel ('DIAS 360 / DEVENGO 30' en TABLA CARTERA SIMULADA)
 table(
     ["Convencion", "Dias del periodo", "Base anual", "Uso"],
     [
-        ["30/360", "Cada mes = 30 dias", "360", "Predominante en los modelos UVCC del BCV."],
+        ["30/360", "Cada mes = 30 dias", "360", "Predominante en los modelos UVC del BCV."],
         ["Actual/365", "Dias calendario reales", "365", "Opcion alternativa (elaboracion propia)."],
     ],
     widths=[1.5, 2.2, 1.0, 2.1],
@@ -410,7 +410,7 @@ table(["Parametro", "Descripcion", "Por defecto"],
 heading("21. Glosario", 1)
 source('own', "Definiciones redactadas por el asistente.")
 table(["Termino", "Definicion"],
-      [["UVC / UVCC", "Unidad de Valor de Credito (Comercial). Unidad de cuenta del credito."],
+      [["UVC", "Unidad de Valor de Credito. Unidad de cuenta del credito (en 2019 se denomino 'Comercial', UVCC)."],
        ["IDI", "Indice de Inversion. Valor en Bs de una UVC, publicado por el BCV."],
        ["Componente base", "Valor de un monto UVC al IDI de desembolso."],
        ["Componente de actualizacion", "Diferencia por la variacion del IDI."],
