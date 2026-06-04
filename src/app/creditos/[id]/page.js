@@ -50,7 +50,7 @@ const COLUMN_DESCRIPTIONS = {
   "Interes UVC": "Interes del periodo en UVC = Saldo UVC x tasa anual x dias/base.",
   "Amort UVC": "Amortizacion de capital en UVC = Cuota UVC - Interes UVC.",
   "Cuota UVC": "Cuota fija en UVC = P x (i / (1 - (1+i)^-n)).",
-  "IDI venc": "Indice de Valor (IDI) a la fecha de vencimiento.",
+  "IDI venc": "Indice de Inversion (IDI) del BCV a la fecha de vencimiento. La etiqueta 'piso' indica que se aplico el IDI de otorgamiento por ser mayor (Res. BCV 21-01-02).",
   "Interes Bs": "Interes del periodo en bolivares (Interes UVC valorizado por IDI).",
   "Amort Bs": "Amortizacion de capital en bolivares = Amort UVC x IDI vencimiento.",
   "Cuota Bs": "Cuota total en bolivares = Interes Bs + Amort Bs. Clic para ver el detalle diario.",
@@ -68,7 +68,7 @@ const COLUMN_DESCRIPTIONS = {
   "Morat 819": "Moratorio 819 (orden) = solo el interes moratorio clasificado en cuentas de orden (Mora ord).",
   "Val UVC cap": "Valorizacion del capital realizada al pagar = Pago capital Bs - capital pagado UVC x IDI desembolso. Se calcula al registrar el pago de la cuota.",
   "Val UVC rend": "Valorizacion del rendimiento realizada al pagar = interes pagado - interes pagado UVC x IDI desembolso. Se calcula al registrar el pago de la cuota.",
-  "Estado": "Clasificacion segun dias de mora (AL DIA, MORA 1, VENCIDO, VENCIDO 2, CASTIGO).",
+  "Estado": "Clasificacion segun dias de mora (AL DIA, MORA 1, VENCIDO, VENCIDO 2, CASTIGO). '❄ congelado' = credito vencido que deja de actualizarse por IDI en cuentas reales (Minuta SUDEBAN 17-12-2019).",
 };
 
 function Hint({ value, tooltip }) {
@@ -129,6 +129,7 @@ function exportScheduleToCSV(schedule, loanName) {
     "#", "Vencimiento", "Dias", "Saldo UVC", "Interes UVC", "Amort UVC", "Cuota UVC",
     "IDI texto", "IDI venc", "Interes Bs", "Amort Bs", "Cuota Bs", "Saldo Bs",
     "Pago fecha", "Pago Bs", "Dias mora", "Mora Bs", "Estado",
+    "Val UVC cap orden", "Val UVC rend orden", "Congelado", "Piso IDI aplicado",
   ];
   const rows = schedule.map((r) => [
     r.index,
@@ -149,6 +150,10 @@ function exportScheduleToCSV(schedule, loanName) {
     r.daysLate || 0,
     (r.moraBs || 0).toFixed(2),
     r.status || "",
+    (r.valorUvcCapitalOrder || 0).toFixed(2),
+    (r.valorUvcRendOrder || 0).toFixed(2),
+    r.frozen ? "Si" : "No",
+    r.idiFloorApplied ? "Si" : "No",
   ]);
   const csv = [headers, ...rows]
     .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
@@ -968,7 +973,17 @@ export default function LoanPage() {
                               <td><Hint value={fmtUvcUnit(row.interestUvc)} tooltip={row.explain?.interestUvc} /></td>
                               <td><Hint value={fmtUvcUnit(row.amortUvc)} tooltip={row.explain?.amortUvc} /></td>
                               <td><Hint value={fmtUvcUnit(row.paymentUvc)} tooltip={row.explain?.paymentUvc} /></td>
-                              <td><Hint value={fmtUvc(row.idiDue)} tooltip={row.explain?.idiDue} /></td>
+                              <td>
+                                <Hint value={fmtUvc(row.idiDue)} tooltip={row.explain?.idiDue} />
+                                {row.idiFloorApplied && (
+                                  <span
+                                    title="Piso de IDI aplicado: se usa el IDI de otorgamiento (Res. BCV 21-01-02, Arts. 5 b/c y 6)"
+                                    className="ml-1 rounded bg-amber-500/20 px-1 text-[9px] font-semibold text-amber-700 dark:text-amber-400"
+                                  >
+                                    piso
+                                  </span>
+                                )}
+                              </td>
                               <td><Hint value={fmtMoneyUnit(row.interestBs)} tooltip={row.explain?.interestBs} /></td>
                               <td><Hint value={fmtMoneyUnit(row.amortBs)} tooltip={row.explain?.amortBs} /></td>
                               <td>
@@ -1038,9 +1053,31 @@ export default function LoanPage() {
                               <td><Hint value={fmtMoneyUnit(row.orderConv)} tooltip={row.explain?.orderConv} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio143)} tooltip={row.explain?.moratorio143} /></td>
                               <td><Hint value={fmtMoneyUnit(row.moratorio819)} tooltip={row.explain?.moratorio819} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcCapital || 0)} tooltip={row.explain?.valorPaidUvcCapital || row.explain?.valorUvcCapital} /></td>
-                              <td><Hint value={fmtMoneyUnit(row.valorPaidUvcRend || 0)} tooltip={row.explain?.valorPaidUvcRend || row.explain?.valorUvcRend} /></td>
-                              <td>{row.status}</td>
+                              <td>
+                                <Hint value={fmtMoneyUnit(row.valorPaidUvcCapital || 0)} tooltip={row.explain?.valorPaidUvcCapital || row.explain?.valorUvcCapital} />
+                                {row.frozen && (row.valorUvcCapitalOrder || 0) !== 0 && (
+                                  <span title="En cuentas de orden (credito congelado)" className="ml-1 text-[9px] text-indigo-500">orden</span>
+                                )}
+                              </td>
+                              <td>
+                                <Hint value={fmtMoneyUnit(row.valorPaidUvcRend || 0)} tooltip={row.explain?.valorPaidUvcRend || row.explain?.valorUvcRend} />
+                                {row.frozen && (row.valorUvcRendOrder || 0) !== 0 && (
+                                  <span title="En cuentas de orden (credito congelado)" className="ml-1 text-[9px] text-indigo-500">orden</span>
+                                )}
+                              </td>
+                              <td>
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <span>{row.status}</span>
+                                  {row.frozen && (
+                                    <span
+                                      title="Credito congelado: deja de actualizarse por IDI en cuentas reales; revalorizacion en cuentas de orden (Minuta SUDEBAN 17-12-2019)"
+                                      className="rounded bg-indigo-500/15 px-1 text-[9px] font-semibold text-indigo-600 dark:text-indigo-400"
+                                    >
+                                      ❄ congelado
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
                             </tr>
                           ); })}
                         </tbody>
@@ -1098,7 +1135,7 @@ export default function LoanPage() {
                   <Card className="glass">
                     <CardHeader>
                       <CardTitle>Saldo UVC en el tiempo</CardTitle>
-                      <CardDescription>Evolucion del saldo en Unidades de Valor Constante por cuota.</CardDescription>
+                      <CardDescription>Evolucion del saldo en Unidades de Valor de Credito (UVC) por cuota.</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <BalanceChart schedule={loan.result.schedule} />
