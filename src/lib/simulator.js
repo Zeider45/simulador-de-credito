@@ -357,16 +357,27 @@ function normalizePayments(payments, termMonths) {
   return result;
 }
 
+// Plan de cuentas oficial para creditos comerciales en UVC, segun la modificacion al
+// Manual de Contabilidad para Instituciones Bancarias (Circular SUDEBAN SIB-II-GGR-GNP-12161
+// del 28/10/2019) que acompana a la Resolucion BCV N° 19-09-01. Subcuentas creadas:
+//  131.35  Creditos comerciales vigentes objeto de las medidas del BCV (capital base)
+//  131.36  Variacion de creditos comerciales vigentes (.M.01 incremento / .M.02 disminucion)
+//  358.01  Variacion de creditos comerciales (patrimonio)
+//  513.01.M.35  Rendimientos por creditos comerciales vigentes
+//  513.01.M.36  Rendimientos por variacion de creditos comerciales vigentes
 function buildAccounts(customAccounts) {
   const base = {
     bank: { code: "1110", name: "Banco" },
-    loan: { code: "1310", name: "Cartera de credito" },
-    interestReceivable: { code: "1340", name: "Interes por cobrar" },
-    interestIncome: { code: "4120", name: "Ingresos por interes" },
-    moraReceivable: { code: "1350", name: "Mora por cobrar" },
-    moraIncome: { code: "4130", name: "Ingresos por mora" },
+    loan: { code: "131.35", name: "Creditos comerciales vigentes objeto de las medidas del BCV" },
+    loanVariation: { code: "131.36", name: "Variacion de creditos comerciales vigentes (BCV)" },
+    equityVariation: { code: "358.01", name: "Variacion de creditos comerciales (patrimonio, BCV)" },
+    interestReceivable: { code: "138.00", name: "Rendimientos por cobrar por creditos comerciales" },
+    interestIncome: { code: "513.01.M.35", name: "Rendimientos por creditos comerciales vigentes (BCV)" },
+    interestVariationIncome: { code: "513.01.M.36", name: "Rendimientos por variacion de creditos comerciales (BCV)" },
+    moraReceivable: { code: "138.00", name: "Rendimientos por cobrar - mora creditos comerciales" },
+    moraIncome: { code: "513.01.M.35", name: "Ingresos por mora de creditos comerciales" },
     disbursementDiscount: { code: "2160", name: "Descuento desembolso" },
-    feeIncome: { code: "4210", name: "Comisiones por desembolso" },
+    feeIncome: { code: "532.00", name: "Comisiones flat por desembolso (max 0,50%)" },
   };
 
   return { ...base, ...(customAccounts || {}) };
@@ -404,13 +415,42 @@ function buildLedger(params, schedule, accounts, feeBs = 0) {
 
   schedule.forEach((row) => {
     if (row.interestBs > 0) {
+      // Separacion del rendimiento en componente base (513.01.M.35) y componente por
+      // variacion / actualizacion UVC (513.01.M.36), segun el Manual de Contabilidad (BCV).
+      const baseInt = row.interesBaseBs || 0;
+      const varInt = (row.interestBs || 0) - baseInt;
+      const incomeLines = [
+        { account: accounts.interestReceivable, debit: row.interestBs, credit: 0 },
+      ];
+      if (Math.abs(baseInt) > 0.005) {
+        incomeLines.push({ account: accounts.interestIncome, debit: 0, credit: baseInt });
+      }
+      if (Math.abs(varInt) > 0.005 && accounts.interestVariationIncome) {
+        incomeLines.push({ account: accounts.interestVariationIncome, debit: 0, credit: varInt });
+      }
       entries.push({
         date: formatDate(row.dueDate),
         description: `Devengo interes cuota ${row.index}`,
-        lines: [
-          { account: accounts.interestReceivable, debit: row.interestBs, credit: 0 },
-          { account: accounts.interestIncome, debit: 0, credit: row.interestBs },
-        ],
+        lines: incomeLines,
+      });
+    }
+
+    // Variacion (actualizacion) del capital amortizado: incremento -> 131.36 / 358.01,
+    // disminucion -> reversa. Refleja el "componente de actualizacion" de los modelos UVCC.
+    const capVar = row.valorUvcCapital || 0;
+    if (Math.abs(capVar) > 0.005 && accounts.loanVariation && accounts.equityVariation) {
+      entries.push({
+        date: formatDate(row.dueDate),
+        description: `Variacion de capital (actualizacion BCV) cuota ${row.index}`,
+        lines: capVar >= 0
+          ? [
+              { account: accounts.loanVariation, debit: capVar, credit: 0 },
+              { account: accounts.equityVariation, debit: 0, credit: capVar },
+            ]
+          : [
+              { account: accounts.equityVariation, debit: -capVar, credit: 0 },
+              { account: accounts.loanVariation, debit: 0, credit: -capVar },
+            ],
       });
     }
 
@@ -1097,6 +1137,7 @@ export function simulateLoan(input) {
     moraRate: params.moraRate * 100,
     creditUvc: params.creditUvc,
     idiFloorOnPrepay: params.idiFloorOnPrepay,
+    disbursementFeeRate: params.disbursementFeeRate,
   });
 
   return {

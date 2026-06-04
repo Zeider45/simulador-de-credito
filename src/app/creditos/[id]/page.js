@@ -276,6 +276,7 @@ export default function LoanPage() {
       moraRate: Number(complianceParams.moraRate),
       creditUvc: Boolean(complianceParams.creditUvc),
       idiFloorOnPrepay: complianceParams.idiFloorOnPrepay !== false,
+      disbursementFeeRate: Number(complianceParams.disbursementFeeRate),
     });
   }, [complianceParams]);
 
@@ -759,6 +760,7 @@ export default function LoanPage() {
                   <div className="space-y-2">
                     <Label>Comision desembolso (%)</Label>
                     <Input name="disbursementFeeRate" type="number" step="0.0001" value={loan.params.disbursementFeeRate} onChange={handleInputChange} />
+                    <p className="text-xs text-muted-foreground">Comision flat maxima: 0,50% del monto. Aviso Oficial BCV, G.O. 41.742.</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Base de dias</Label>

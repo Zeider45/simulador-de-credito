@@ -8,7 +8,9 @@ regulación del BCV/SUDEBAN y el código.
 
 | Documento | Contenido relevante |
 |---|---|
-| `RESOLUCION BCV CREDITOS UVCC.pdf` / `GO 41.742 VERSION UVCC.pdf` | G.O. N° 41.742 (21/10/2019): Resolución N° 19-09-01 que crea la obligación de expresar los créditos comerciales en **UVCC** |
+| `RESOLUCION BCV CREDITOS UVCC.pdf` / `GO 41.742 VERSION UVCC.pdf` | G.O. N° 41.742 (21/10/2019): Resolución N° 19-09-01 (UVCC) + Aviso Oficial: comisión flat máx **0,50%** |
+| `Presentación impacto contable UVCC.pptx` | Plan de cuentas UVCC (131.35, 131.36, 358.01, 513.01.M.35, 513.01.M.36), comisión flat 0,50%, tasa 4%-6% |
+| `Tabla amortizacion nayrobis bolivar-1.xlsx`, `Simulacion UVCC.xlsx`, `TABLA DE CARTERA SIMULADA UVCC...xlsx`, `SIMULACION A 30 DIAS...xlsx` | Modelos de cálculo: devengo diario en UVC, conversión por IDI, componente base vs. variación, TIR |
 | `BCV circular_entrada_en_vigencia_aplicabilidad_octubre_2019.pdf` | Fija la entrada en vigencia de la Resolución 19-09-01 el **28/10/2019** |
 | `CIRCULAR SIB-DSB-CJ-OD-13083-Unidad de Valor de Credito Comercial.pdf` | Circular SUDEBAN (14/11/2019): cláusulas mínimas del contrato UVCC |
 | `resolucion_21-01-02 indexacion cartera de credito.pdf` | **Norma vigente** (G.O. 42.050, 19/01/2021): UVC, IDI, tasas, mora, piso de IDI |
@@ -52,7 +54,39 @@ regulación del BCV/SUDEBAN y el código.
 - **Regla:** cada cuota debe incluir interés y una porción de amortización de capital expresada en UVC.
 - **Aplicación:** sistema de amortización francesa en UVC ya implementado (cuota fija en UVC).
 
-### 2.7 Valoración del saldo (Res. 21-01-02, Art. 6)
+### 2.7 Plan de cuentas oficial UVCC (Manual de Contabilidad SUDEBAN)
+- **Regla:** la modificación al Manual de Contabilidad (Circular SIB-II-GGR-GNP-12161 del
+  28/10/2019, acompañando a la Res. 19-09-01), reflejada en `Presentación impacto contable UVCC.pptx`
+  y en los modelos Excel, crea las subcuentas:
+  - `131.35` Créditos comerciales vigentes objeto de las medidas del BCV (capital base).
+  - `131.36` Variación de créditos comerciales vigentes (`.M.01` incremento / `.M.02` disminución).
+  - `358.01` Variación de créditos comerciales (patrimonio).
+  - `513.01.M.35` Rendimientos por créditos comerciales vigentes.
+  - `513.01.M.36` Rendimientos por variación de créditos comerciales vigentes.
+- **Aplicación:** `buildAccounts()` y `DEFAULT_ACCOUNTS` adoptan estos códigos. `buildLedger()`:
+  (a) registra el capital en `131.35`; (b) **separa el devengo** en `513.01.M.35` (componente base)
+  y `513.01.M.36` (componente por variación/actualización); (c) registra la variación de capital
+  en `131.36` / `358.01`.
+
+### 2.8 Comisión flat de desembolso (≤ 0,50%)
+- **Regla:** la comisión flat no puede exceder el **0,50%** del monto del crédito (Aviso Oficial BCV,
+  G.O. 41.742; reiterado en la presentación contable).
+- **Aplicación:** verificación bloqueante `COMISION_FLAT` en `evaluateCompliance()`; el valor por
+  defecto se ajustó de 0,80% a **0,50%**.
+
+### 2.9 Banda de tasa del producto documentado (4%–6%)
+- **Regla:** la presentación contable y la Res. 19-09-01 fijan el producto UVCC en **4%–6%** anual;
+  la Res. 21-01-02 (vigente) amplía a 4%–10%. Los modelos Excel usan 6% y 4%.
+- **Aplicación:** el tope bloqueante se mantiene en 4%–10% (norma vigente); el valor por defecto se
+  ajustó a **6%** para coincidir con el producto y los ejemplos documentados.
+
+### 2.10 Validación numérica contra los modelos Excel
+- Se reprodujo la tabla `Tabla amortizacion nayrobis bolivar` con el motor: capital en UVC
+  `160.000 / 0,98495915 = 162.443,29` ✓, IDI de la serie resuelto correctamente, interés base diario
+  `160.000 × 16% / 360 = 71,11` ✓, separación base/variación del rendimiento consistente con los
+  modelos (`Pago de interés` = base + componente de actualización).
+
+### 2.7-bis Valoración del saldo (Res. 21-01-02, Art. 6)
 - **Regla:** `Saldo_Bs = Posición_deudora_UVC × IDI_fecha`.
 - **Aplicación:** ya implementado (`balanceBs = balanceUvc × idiDue`), con la excepción del piso del Art. 5 c).
 
@@ -60,9 +94,9 @@ regulación del BCV/SUDEBAN y el código.
 
 | Archivo | Cambio |
 |---|---|
-| `src/lib/regulatory.js` | Módulo compartido: `REGULATORY_LIMITS` y `evaluateCompliance()` (con niveles y lista `blocking`) |
-| `src/lib/simulator.js` | Importa el módulo regulatorio; piso de IDI (`idiFloorOnPrepay`), enrutamiento de valorización a cuentas de orden (`frozen`), terminología IDI, `result.compliance` |
-| `src/lib/loanStorage.js` | `annualRate` por defecto 10% (conforme), `idiFloorOnPrepay: true` |
+| `src/lib/regulatory.js` | Módulo compartido: `REGULATORY_LIMITS` y `evaluateCompliance()` (niveles, lista `blocking`, check `COMISION_FLAT` ≤ 0,50%) |
+| `src/lib/simulator.js` | Importa el módulo regulatorio; piso de IDI (`idiFloorOnPrepay`), enrutamiento de valorización a cuentas de orden (`frozen`), terminología IDI, **plan de cuentas SUDEBAN (131.35/131.36/358.01/513.01.M.35/513.01.M.36)** y asientos base/variación, `result.compliance` |
+| `src/lib/loanStorage.js` | `annualRate` por defecto **6%**, comisión flat por defecto **0,50%**, `idiFloorOnPrepay: true`, `DEFAULT_ACCOUNTS` con el plan UVCC |
 | `src/app/creditos/[id]/page.js` | Tarjeta "Cumplimiento BCV/SUDEBAN", **bloqueo previo** de simulación/pagos cuando hay violaciones, ayudas regulatorias, indicadores `piso`/`congelado`/`orden`, columnas CSV |
 | `docs/documentacion-tecnica.md` | Marco regulatorio actualizado, terminología, topes de tasa/mora, piso de IDI, congelamiento |
 

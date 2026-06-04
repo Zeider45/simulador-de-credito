@@ -396,34 +396,45 @@ El motor refleja esta separación: cuando una cuota supera el umbral `mora2` (es
 
 ### 12.1 Plan de cuentas utilizado
 
-Los códigos corresponden al **Manual de Contabilidad para Instituciones Financieras Bancarias de SUDEBAN**:
+Los códigos corresponden a las subcuentas creadas en el **Manual de Contabilidad para Instituciones Bancarias de SUDEBAN** (Circular SIB-II-GGR-GNP-12161 del 28/10/2019) para los créditos comerciales en UVCC:
 
-| Cuenta | Código orientativo | Nombre |
+| Cuenta | Código | Nombre |
 |---|---|---|
 | Banco (activo líquido) | 1110 | Efectivo y equivalentes / Banco |
-| Cartera de créditos | 1310 | Cartera de créditos vigente |
-| Intereses por cobrar | 1340 | Rendimientos por cobrar en cartera vigente |
-| Mora por cobrar | 1350 | Mora por cobrar en cartera vigente |
-| Ingresos por intereses | 4120 | Ingresos por intereses de cartera |
-| Ingresos por mora | 4130 | Ingresos por mora de cartera |
-| Comisión desembolso | 2160 / 4210 | Descuento / Comisión por desembolso |
-
-> Los códigos exactos varían según la versión del Manual de Contabilidad vigente. Verificar con SUDEBAN antes de implementar.
+| Cartera (capital base) | **131.35** | Créditos comerciales vigentes objeto de las medidas del BCV |
+| Variación de cartera | **131.36** | Variación de créditos comerciales vigentes (.M.01 incremento / .M.02 disminución) |
+| Variación de capital (patrimonio) | **358.01** | Variación de créditos comerciales (BCV) |
+| Rendimientos por cobrar | 138.00 | Rendimientos por cobrar por créditos comerciales |
+| Ingresos por intereses (base) | **513.01.M.35** | Rendimientos por créditos comerciales vigentes (BCV) |
+| Ingresos por intereses (variación) | **513.01.M.36** | Rendimientos por variación de créditos comerciales (BCV) |
+| Comisión flat desembolso (≤ 0,50%) | 532.00 | Comisiones flat por el desembolso |
 
 ### 12.2 Asiento de desembolso
 
 | Debe | Haber | Descripción |
 |---|---|---|
-| 1310 Cartera de créditos | | Monto desembolsado en Bs |
+| 131.35 Créditos comerciales (capital base) | | Monto desembolsado en Bs |
 | | 1110 Banco | Efectivo entregado al cliente |
-| | 2160 Descuento desembolso | Comisión retenida (si aplica) |
+| | 532.00 Comisión flat | Comisión retenida (máx. 0,50%) |
 
 ### 12.3 Asiento de devengo de intereses (cada período)
 
+El rendimiento se separa en componente base y componente por variación (actualización UVC):
+
 | Debe | Haber |
 |---|---|
-| 1340 Intereses por cobrar | |
-| | 4120 Ingresos por intereses |
+| 138.00 Rendimientos por cobrar | |
+| | 513.01.M.35 Rendimientos por créditos comerciales (componente base) |
+| | 513.01.M.36 Rendimientos por variación (componente de actualización) |
+
+### 12.3-bis Asiento de variación de capital (actualización por IDI)
+
+| Debe | Haber |
+|---|---|
+| 131.36 Variación de créditos comerciales | |
+| | 358.01 Variación de créditos comerciales (patrimonio) |
+
+> Una disminución de la variación (IDI a la baja) invierte el asiento. Conforme a la minuta SUDEBAN del 17-12-2019, cuando el crédito pasa a vencido la variación deja de registrarse en cuentas reales y se devenga en cuentas de orden hasta su cobro.
 
 ### 12.4 Asiento de devengo de mora (si aplica)
 
