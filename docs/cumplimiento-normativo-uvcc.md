@@ -60,15 +60,20 @@ regulación del BCV/SUDEBAN y el código.
 
 | Archivo | Cambio |
 |---|---|
-| `src/lib/simulator.js` | `REGULATORY_LIMITS`, `evaluateCompliance()`, piso de IDI (`idiFloorOnPrepay`), enrutamiento de valorización a cuentas de orden (`frozen`), terminología IDI, `result.compliance` |
+| `src/lib/regulatory.js` | Módulo compartido: `REGULATORY_LIMITS` y `evaluateCompliance()` (con niveles y lista `blocking`) |
+| `src/lib/simulator.js` | Importa el módulo regulatorio; piso de IDI (`idiFloorOnPrepay`), enrutamiento de valorización a cuentas de orden (`frozen`), terminología IDI, `result.compliance` |
 | `src/lib/loanStorage.js` | `annualRate` por defecto 10% (conforme), `idiFloorOnPrepay: true` |
-| `src/app/creditos/[id]/page.js` | Tarjeta "Cumplimiento BCV/SUDEBAN", ayudas regulatorias en tasa/mora, toggle de piso de IDI |
+| `src/app/creditos/[id]/page.js` | Tarjeta "Cumplimiento BCV/SUDEBAN", **bloqueo previo** de simulación/pagos cuando hay violaciones, ayudas regulatorias, indicadores `piso`/`congelado`/`orden`, columnas CSV |
 | `docs/documentacion-tecnica.md` | Marco regulatorio actualizado, terminología, topes de tasa/mora, piso de IDI, congelamiento |
 
 ## 4. Notas y limitaciones
 
-- Los topes de tasa e interés se aplican como **alertas no bloqueantes** para no impedir simulaciones
-  comparativas; la conformidad se reporta en `result.compliance.compliant`.
+- Los topes de tasa de interés y de mora se aplican como **validación bloqueante**: el módulo
+  compartido `src/lib/regulatory.js` (`evaluateCompliance`) clasifica cada verificación con un nivel
+  (`error` / `warning` / `info`). Los checks de nivel `error` (tasa fuera de rango, mora sobre el tope)
+  **impiden simular o registrar pagos** desde la UI (botones deshabilitados + aviso). El piso de IDI
+  desactivado se reporta como `warning` (no bloquea). La conformidad global se expone en
+  `result.compliance.compliant` y la lista de bloqueos en `result.compliance.blocking`.
 - Algunos PDFs (p. ej. `Resolución 070.19...PDF`) están escaneados sin capa de texto; el análisis se
   apoyó en las versiones con texto y en los DOCX/regulaciones equivalentes.
 - Las cuentas contables y umbrales de clasificación siguen siendo configurables; verificar siempre las

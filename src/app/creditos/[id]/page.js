@@ -10,6 +10,7 @@ import {
   saveLoans,
   upsertLoan,
 } from "@/lib/loanStorage";
+import { evaluateCompliance } from "@/lib/regulatory";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -265,6 +266,32 @@ export default function LoanPage() {
     }
     return t;
   }, [loan?.result]);
+  // Verificacion de cumplimiento previa (cliente) para bloquear simulaciones que excedan
+  // los topes del BCV (Res. 21-01-02). Solo los checks de nivel "error" bloquean.
+  const complianceParams = loan?.params;
+  const compliancePreview = useMemo(() => {
+    if (!complianceParams) return null;
+    return evaluateCompliance({
+      annualRate: Number(complianceParams.annualRate),
+      moraRate: Number(complianceParams.moraRate),
+      creditUvc: Boolean(complianceParams.creditUvc),
+      idiFloorOnPrepay: complianceParams.idiFloorOnPrepay !== false,
+    });
+  }, [complianceParams]);
+
+  const blockingMsg = compliancePreview?.blocking?.length
+    ? `${compliancePreview.blocking.map((c) => c.message).join(" ")} (Res. BCV 21-01-02)`
+    : null;
+
+  // Devuelve true (y fija el error) si los parametros violan un tope que bloquea la simulacion.
+  const isRegulatoryBlocked = () => {
+    if (blockingMsg) {
+      setError(`No se puede simular: ${blockingMsg}`);
+      return true;
+    }
+    return false;
+  };
+
   const selectClass = "h-10 w-full rounded-xl border border-border bg-card text-foreground px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
   const persistLoan = (nextLoan) => {
@@ -306,6 +333,7 @@ export default function LoanPage() {
 
   const handleCalculate = async (applyPayments = false) => {
     if (!loan) return;
+    if (isRegulatoryBlocked()) return;
     setLoading(true);
     setError("");
     try {
@@ -320,6 +348,7 @@ export default function LoanPage() {
 
   const handlePay = async (index, row) => {
     if (!loan) return;
+    if (isRegulatoryBlocked()) return;
     const nextPayments = [...loan.payments];
     const isSimMode = loan.params.paymentMode === "simulacion";
     const paymentDate = isSimMode
@@ -348,6 +377,7 @@ export default function LoanPage() {
   // (cuota Bs + mora). Respeta los pagos ya registrados (no los sobrescribe).
   const handlePayAll = async () => {
     if (!loan?.result?.schedule?.length) return;
+    if (isRegulatoryBlocked()) return;
     const isSimMode = loan.params.paymentMode === "simulacion";
     const nextPayments = [...loan.payments];
     loan.result.schedule.forEach((row, idx) => {
@@ -482,7 +512,7 @@ export default function LoanPage() {
           <Button asChild variant="outline">
             <Link href="/">Volver</Link>
           </Button>
-          <Button onClick={() => handleCalculate(false)} disabled={loading}>
+          <Button onClick={() => handleCalculate(false)} disabled={loading || Boolean(blockingMsg)} title={blockingMsg || undefined}>
             {loading ? (
               <span className="flex items-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -490,11 +520,20 @@ export default function LoanPage() {
               </span>
             ) : "Calcular"}
           </Button>
-          <Button variant="secondary" onClick={() => handleCalculate(true)} disabled={loading}>
+          <Button variant="secondary" onClick={() => handleCalculate(true)} disabled={loading || Boolean(blockingMsg)} title={blockingMsg || undefined}>
             Aplicar pagos
           </Button>
         </div>
       </header>
+
+      {blockingMsg && (
+        <Card className="border-rose-500/40 bg-rose-500/10">
+          <CardContent className="py-4 text-sm text-rose-700 dark:text-rose-400">
+            <span className="font-semibold">Simulacion bloqueada por incumplimiento normativo:</span> {blockingMsg}.
+            Ajusta los parametros dentro de los limites permitidos para continuar.
+          </CardContent>
+        </Card>
+      )}
 
       {error && (
         <Card className="border-rose-500/30 bg-rose-500/10">
